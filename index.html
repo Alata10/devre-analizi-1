@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devre Analizi I — Sınav Hazırlık Atölyesi</title>
+<script>try{var t=localStorage.getItem('da1_theme');if(t==='light')document.documentElement.classList.remove('dark');else document.documentElement.classList.add('dark');}catch(e){}</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif'],mono:['"JetBrains Mono"','monospace']}}}}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<style>
+  html{scroll-behavior:smooth}
+  body{font-family:Inter,system-ui,sans-serif}
+  .katex{font-size:1.06em}
+  .katex-display{margin:.35rem 0!important;overflow-x:auto;overflow-y:hidden;padding:.25rem 0}
+  .ic{font-family:"JetBrains Mono",monospace;font-size:.85em;padding:.05rem .35rem;border-radius:.35rem;background:rgb(148 163 184 / .18)}
+  /* flip cards */
+  .flip{perspective:1100px}
+  .flip-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.2,.7,.2,1);transform-style:preserve-3d}
+  .flip.on .flip-inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+  .face.back{transform:rotateY(180deg)}
+  /* animations */
+  @keyframes inUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .anim-in{animation:inUp .35s ease both}
+  /* markdown output */
+  .md{line-height:1.7}
+  .md h1{font-size:1.45rem;font-weight:800;margin:.2rem 0 .9rem;letter-spacing:-.01em}
+  .md h2{font-size:1.12rem;font-weight:700;margin:1.6rem 0 .6rem;padding-bottom:.35rem;border-bottom:1px solid rgb(148 163 184 / .25)}
+  .md h3{font-size:1rem;font-weight:700;margin:1.2rem 0 .4rem}
+  .md p{margin:.5rem 0}
+  .md ul{list-style:disc;padding-left:1.4rem;margin:.5rem 0}
+  .md ol{list-style:decimal;padding-left:1.4rem;margin:.5rem 0}
+  .md li{margin:.3rem 0}
+  .md table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.9rem}
+  .md th,.md td{border:1px solid rgb(148 163 184 / .3);padding:.4rem .6rem;text-align:left}
+  .md th{background:rgb(148 163 184 / .12)}
+  .md blockquote{border-left:4px solid #f59e0b;background:rgb(245 158 11 / .10);padding:.55rem .9rem;border-radius:.6rem;margin:.75rem 0}
+  .md blockquote p{margin:.2rem 0}
+  .md code{font-family:"JetBrains Mono",monospace;font-size:.84em;background:rgb(148 163 184 / .16);padding:.08rem .35rem;border-radius:.35rem}
+  .md pre{background:rgb(15 23 42 / .9);color:#e2e8f0;padding:.8rem 1rem;border-radius:.8rem;overflow:auto;margin:.8rem 0}
+  .md pre code{background:transparent;padding:0}
+  .md strong{font-weight:700}
+  .md hr{border-color:rgb(148 163 184 / .25);margin:1.2rem 0}
+  .md em{opacity:.85}
+  input[type=range]{accent-color:#0ea5e9}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:rgb(100 116 139 / .4);border-radius:10px}
+  @media print{header,.no-print{display:none!important} body{background:#fff!important;color:#000!important}}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 antialiased">
+<div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+  <div class="absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-sky-400/20 dark:bg-sky-500/10 blur-3xl"></div>
+  <div class="absolute top-1/3 -right-40 h-[26rem] w-[26rem] rounded-full bg-violet-400/20 dark:bg-violet-600/10 blur-3xl"></div>
+</div>
+<div id="root"><div style="padding:4rem;text-align:center;font-family:sans-serif;opacity:.7">⚡ Devre Analizi I yükleniyor…</div></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+const r = String.raw;
+
+/* =====================================================================
+   1) GENEL YARDIMCILAR — KaTeX, zengin metin, markdown, sayı biçimleri
+   ===================================================================== */
+const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const kx = (m, display=false) => {
+  // Türkçe harf içeren alt indisleri dik metin olarak yaz: P_{üretilen} → P_{\text{üretilen}}
+  m = String(m).replace(/_\{([^{}\\]*[çğıöşüÇĞİÖŞÜ][^{}\\]*)\}/g, '_{\\text{$1}}');
+  try { return katex.renderToString(m, { displayMode: display, throwOnError: false, strict: 'ignore' }); }
+  catch (e) { return escapeHtml(m); }
+};
+const fmtPlain = s => escapeHtml(s)
+  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  .replace(/`(.+?)`/g, '<code class="ic">$1</code>');
+function richHtml(src){
+  const out = []; let last = 0; let m;
+  const re = /\$\$([\s\S]+?)\$\$|\$([^$]+?)\$/g;
+  while ((m = re.exec(src))) {
+    out.push(fmtPlain(src.slice(last, m.index)));
+    out.push(m[1] !== undefined ? kx(m[1], true) : kx(m[2]));
+    last = re.lastIndex;
+  }
+  out.push(fmtPlain(src.slice(last)));
+  return out.join('');
+}
+function mdHtml(src){
+  if (!src) return '';
+  const store = [];
+  const put = (tex, d) => { store.push(kx(tex.trim(), d)); return 'KXQ' + (store.length - 1) + 'QXK'; };
+  let s = src
+    .replace(/\$\$([\s\S]+?)\$\$/g, (_, g) => put(g, true))
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_, g) => put(g, true))
+    .replace(/\\\(([\s\S]+?)\\\)/g, (_, g) => put(g, false))
+    .replace(/\$([^$\n]+?)\$/g, (_, g) => put(g, false));
+  let html = marked.parse(s, { gfm: true, breaks: false });
+  html = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/\son\w+="[^"]*"/gi, '');
+  return html.replace(/KXQ(\d+)QXK/g, (_, i) => store[+i]);
+}
+const fmt = (x, d=6) => {
+  if (x === null || x === undefined || !isFinite(x)) return '—';
+  if (Math.abs(x) < 1e-12) return '0';
+  return String(Number(Number(x).toPrecision(d)));
+};
+const SI = { a:1e-18, f:1e-15, p:1e-12, n:1e-9, u:1e-6, 'µ':1e-6, 'μ':1e-6, m:1e-3, k:1e3, K:1e3, M:1e6, G:1e9, T:1e12 };
+function parseSI(s){
+  if (s === null || s === undefined) return NaN;
+  let t = String(s).trim().replace(',', '.').replace(/\s+/g, '').replace(/(Ω|Ω|ohm|V|A|W|J|C)$/i, '');
+  if (t === '') return NaN;
+  const m = t.match(/^([+-]?\d*\.?\d+(?:e[+-]?\d+)?)([fpnuµμmkKMGT]?)$/);
+  if (!m) return NaN;
+  return parseFloat(m[1]) * (m[2] ? SI[m[2]] : 1);
+}
+function formatSI(x, unit=''){
+  if (!isFinite(x)) return '—';
+  if (Math.abs(x) < 1e-15) return '0 ' + unit;
+  const pre = [[1e12,'T'],[1e9,'G'],[1e6,'M'],[1e3,'k'],[1,''],[1e-3,'m'],[1e-6,'µ'],[1e-9,'n'],[1e-12,'p'],[1e-15,'f']];
+  const a = Math.abs(x);
+  for (const [f, p] of pre) if (a >= f * 0.9999999) return fmt(x / f, 5) + ' ' + p + unit;
+  return x.toExponential(3) + ' ' + unit;
+}
+function sciTex(x){
+  if (!isFinite(x)) return r`\text{—}`;
+  if (x === 0) return '0';
+  const e = Math.floor(Math.log10(Math.abs(x)));
+  if (e >= -3 && e <= 5) return fmt(x, 7);
+  return r`${fmt(x / Math.pow(10, e), 5)} \times 10^{${e}}`;
+}
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+const lcm = (a, b) => a / gcd(a, b) * b;
+
+/* =====================================================================
+   2) DENKLEM MOTORU — ayrıştırıcı, LaTeX üretici, doğrusal çözücü
+   ===================================================================== */
+const isIdStart = c => /[A-Za-z_çğıöşüÇĞİÖŞÜα-ωΔ]/.test(c);
+const isIdChar  = c => /[A-Za-z0-9_çğıöşüÇĞİÖŞÜα-ωΔ]/.test(c);
+function tokenize(src){
+  const s = src.replace(/[−–]/g, '-').replace(/[·×]/g, '*').replace(/÷/g, '/').replace(/[ΩΩ]/g, '').replace(/(\d),(\d)/g, '$1.$2');
+  const toks = []; let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (/[0-9.]/.test(c)) {
+      let j = i; while (j < s.length && /[0-9.]/.test(s[j])) j++;
+      if (/[eE]/.test(s[j] || '')) {
+        let k = j + 1; if (/[-+]/.test(s[k] || '')) k++;
+        if (/[0-9]/.test(s[k] || '')) { let q = k; while (/[0-9]/.test(s[q] || '')) q++; if (!isIdChar(s[q] || ' ')) j = q; }
+      }
+      let v = parseFloat(s.slice(i, j)); if (isNaN(v)) throw new Error('sayı');
+      const p = s[j];
+      if (p && 'kMmµμunp'.includes(p) && !isIdChar(s[j+1] || ' ')) { v *= SI[p]; j++; }
+      toks.push({ t:'num', v }); i = j; continue;
+    }
+    if (isIdStart(c)) { let j = i; while (j < s.length && isIdChar(s[j])) j++; toks.push({ t:'id', v:s.slice(i, j) }); i = j; continue; }
+    if ('+-*/^()'.includes(c)) { toks.push({ t:c }); i++; continue; }
+    if (c === '[' || c === '{') { toks.push({ t:'(' }); i++; continue; }
+    if (c === ']' || c === '}') { toks.push({ t:')' }); i++; continue; }
+    throw new Error('Tanınmayan karakter: ' + c);
+  }
+  return toks;
+}
+function parseExpr(src){
+  const toks = tokenize(src); let p = 0;
+  const peek = () => toks[p];
+  const eat = t => { if (toks[p] && toks[p].t === t) { p++; return true; } return false; };
+  function expr(){ let n = term(); while (peek() && (peek().t === '+' || peek().t === '-')) { const op = toks[p++].t; n = { k:op, a:n, b:term() }; } return n; }
+  function term(){
+    let n = unary();
+    while (peek()) {
+      const t = peek().t;
+      if (t === '*' || t === '/') { p++; n = { k:t, a:n, b:unary() }; }
+      else if (t === 'num' || t === 'id' || t === '(') { n = { k:'*', a:n, b:power(), imp:true }; }
+      else break;
+    }
+    return n;
+  }
+  function unary(){ if (eat('-')) return { k:'neg', a:unary() }; if (eat('+')) return unary(); return power(); }
+  function power(){ const b = primary(); if (eat('^')) return { k:'^', a:b, b:unary() }; return b; }
+  function primary(){
+    const t = toks[p++];
+    if (!t) throw new Error('Eksik ifade');
+    if (t.t === 'num') return { k:'num', v:t.v };
+    if (t.t === 'id') return { k:'var', v:t.v };
+    if (t.t === '(') { const n = expr(); if (!eat(')')) throw new Error('Parantez kapanmadı'); return n; }
+    throw new Error('Beklenmeyen sembol: ' + t.t);
+  }
+  if (!toks.length) throw new Error('Boş');
+  const n = expr();
+  if (p < toks.length) throw new Error('Fazla sembol');
+  return n;
+}
+function looksProse(s){
+  try {
+    const toks = tokenize(s);
+    for (let i = 0; i < toks.length; i++) {
+      const t = toks[i];
+      if (t.t === 'id') {
+        if (toks[i+1] && toks[i+1].t === 'id') return true;
+        if (/[çğıöşüÇĞİÖŞÜ]/.test(t.v)) return true;
+        if (t.v.length >= 5 && /^[a-z]+$/.test(t.v)) return true;
+      }
+    }
+    return false;
+  } catch (e) { return true; }
+}
+function ev(n, env){
+  switch (n.k) {
+    case 'num': return n.v;
+    case 'var': if (!(n.v in env)) throw new Error('Bilinmeyen ' + n.v); return env[n.v];
+    case '+': return ev(n.a, env) + ev(n.b, env);
+    case '-': return ev(n.a, env) - ev(n.b, env);
+    case '*': return ev(n.a, env) * ev(n.b, env);
+    case '/': return ev(n.a, env) / ev(n.b, env);
+    case '^': return Math.pow(ev(n.a, env), ev(n.b, env));
+    case 'neg': return -ev(n.a, env);
+  }
+  throw new Error('?');
+}
+function varsOf(n, set=new Set()){ if (n.k === 'var') set.add(n.v); if (n.a) varsOf(n.a, set); if (n.b) varsOf(n.b, set); return set; }
+function subst(n, env){
+  if (n.k === 'var') return (n.v in env) ? { k:'num', v:env[n.v] } : n;
+  if (n.k === 'num') return n;
+  return { ...n, a: n.a ? subst(n.a, env) : undefined, b: n.b ? subst(n.b, env) : undefined };
+}
+function varTex(name){
+  if (!name) return '';
+  if (name.length === 1) return name;
+  const m = name.match(/^([A-Za-zΔα-ω])_?([A-Za-z0-9]+)$/);
+  if (m) return `${m[1]}_{${m[2]}}`;
+  return r`\mathrm{${name.replace(/_/g, r`\_`)}}`;
+}
+const PREC = { '+':1, '-':1, 'neg':2, '*':3, '/':4, '^':5 };
+const prec = n => (n.k === 'num' && n.v < 0) ? 2 : (PREC[n.k] ?? 9);
+const wrapT = (n, c) => c ? r`\left(${tex(n)}\right)` : tex(n);
+function tex(n){
+  switch (n.k) {
+    case 'num': return fmt(n.v);
+    case 'var': return varTex(n.v);
+    case '+':
+      if (n.b.k === 'neg') return `${tex(n.a)} - ${wrapT(n.b.a, prec(n.b.a) <= 1)}`;
+      if (n.b.k === 'num' && n.b.v < 0) return `${tex(n.a)} - ${fmt(-n.b.v)}`;
+      return `${tex(n.a)} + ${tex(n.b)}`;
+    case '-': return `${tex(n.a)} - ${wrapT(n.b, prec(n.b) <= 2)}`;
+    case 'neg': return `-${wrapT(n.a, prec(n.a) <= 2)}`;
+    case '*': {
+      const A = wrapT(n.a, prec(n.a) < 3), B = wrapT(n.b, prec(n.b) < 3);
+      const juxt = n.a.k === 'num' && n.a.v >= 0 && (n.b.k === 'var' || prec(n.b) < 3 || n.b.k === '^');
+      return juxt ? `${A}${B}` : r`${A} \cdot ${B}`;
+    }
+    case '/': return r`\frac{${tex(n.a)}}{${tex(n.b)}}`;
+    case '^': return `${wrapT(n.a, prec(n.a) < 9)}^{${tex(n.b)}}`;
+  }
+  return '?';
+}
+function termsOf(n, s=1){
+  if (n.k === '+') return [...termsOf(n.a, s), ...termsOf(n.b, s)];
+  if (n.k === '-') return [...termsOf(n.a, s), ...termsOf(n.b, -s)];
+  if (n.k === 'neg') return termsOf(n.a, -s);
+  return [{ s, n }];
+}
+function numDen(n){
+  if (n.k === '/' && n.b.k === 'num') return n.b.v;
+  if (n.k === '*') {
+    if (n.b.k === '/' && n.b.b.k === 'num') return n.b.b.v;
+    if (n.a.k === '/' && n.a.b.k === 'num') return n.a.b.v;
+  }
+  return 1;
+}
+function expandTerm(n, k){
+  let N = n;
+  if (n.k === '/' && n.b.k === 'num') N = n.a;
+  else if (n.k === '*') {
+    if (n.b.k === '/' && n.b.b.k === 'num') N = { k:'*', a:n.a, b:n.b.a };
+    else if (n.a.k === '/' && n.a.b.k === 'num') N = { k:'*', a:n.a.a, b:n.b };
+  }
+  if (k === 1) return wrapT(N, prec(N) <= 1);
+  if (N.k === 'num') return fmt(k * N.v);
+  if (N.k === 'var') return `${k}${tex(N)}`;
+  if (N.k === '*' && N.a.k === 'num') return tex({ k:'*', a:{ k:'num', v:k * N.a.v }, b:N.b });
+  if (prec(N) <= 2) return r`${k}\left(${tex(N)}\right)`;
+  return r`${k} \cdot ${tex(N)}`;
+}
+function linearize(f, U, base={}){
+  try {
+    const z = { ...base }; U.forEach(u => z[u] = 0);
+    const f0 = f(z); if (!isFinite(f0)) return null;
+    const a = U.map(u => f({ ...z, [u]: 1 }) - f0);
+    for (let tr = 0; tr < 2; tr++) {
+      const rv = { ...base }; U.forEach(u => rv[u] = Math.random() * 8 - 4 + 0.37);
+      const pred = f0 + U.reduce((s, u, j) => s + a[j] * rv[u], 0);
+      const act = f(rv);
+      if (!isFinite(act) || Math.abs(act - pred) > 1e-7 * (1 + Math.abs(act) + Math.abs(pred))) return null;
+    }
+    return { a, b: -f0 };
+  } catch (e) { return null; }
+}
+function gauss(A, b){
+  const m = A.length, n = A[0].length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  let rowI = 0; const piv = [];
+  for (let c = 0; c < n && rowI < m; c++) {
+    let best = rowI;
+    for (let i = rowI + 1; i < m; i++) if (Math.abs(M[i][c]) > Math.abs(M[best][c])) best = i;
+    if (Math.abs(M[best][c]) < 1e-12) continue;
+    [M[rowI], M[best]] = [M[best], M[rowI]];
+    for (let i = 0; i < m; i++) if (i !== rowI) {
+      const f = M[i][c] / M[rowI][c];
+      for (let k = c; k <= n; k++) M[i][k] -= f * M[rowI][k];
+    }
+    piv.push(c); rowI++;
+  }
+  if (piv.length < n) return null;
+  const x = Array(n);
+  piv.forEach((c, i) => x[c] = M[i][n] / M[i][c]);
+  return x;
+}
+function solve1D(g){
+  try {
+    const g0 = g(0), g1 = g(1), g2 = g(2);
+    if ([g0, g1, g2].every(isFinite) && Math.abs((g2 - g1) - (g1 - g0)) < 1e-9 * (1 + Math.abs(g1))) {
+      const s = g1 - g0; if (Math.abs(s) < 1e-14) return null; return -g0 / s;
+    }
+  } catch (e) {}
+  for (const x0 of [1, 10, -1, 0.1, 100, -10, 1000]) {
+    let x = x0;
+    for (let it = 0; it < 100; it++) {
+      let fx; try { fx = g(x); } catch (e) { break; }
+      if (!isFinite(fx)) break;
+      if (Math.abs(fx) < 1e-12) return x;
+      const h = 1e-6 * (1 + Math.abs(x));
+      const d = (g(x + h) - g(x - h)) / (2 * h);
+      if (!isFinite(d) || d === 0) break;
+      const nx = x - fx / d;
+      if (Math.abs(nx - x) < 1e-12 * (1 + Math.abs(x))) return Math.abs(g(nx)) < 1e-6 * (1 + Math.abs(nx)) ? nx : null;
+      x = nx;
+    }
+  }
+  return null;
+}
+function linTex(a, U, b){
+  const parts = [];
+  a.forEach((c, j) => {
+    if (Math.abs(c) < 1e-10) return;
+    const ac = Math.abs(c);
+    const coef = Math.abs(ac - 1) < 1e-10 ? '' : fmt(ac);
+    const t = coef + varTex(U[j]);
+    parts.push(parts.length ? (c < 0 ? ' - ' : ' + ') + t : (c < 0 ? '-' : '') + t);
+  });
+  return (parts.join('') || '0') + ' = ' + fmt(b);
+}
+function unitOf(n){
+  if (/^[VvEe]/.test(n)) return r`\ \mathrm{V}`;
+  if (/^[Ii]/.test(n)) return r`\ \mathrm{A}`;
+  if (/^R/.test(n)) return r`\ \Omega`;
+  if (/^[Pp]/.test(n)) return r`\ \mathrm{W}`;
+  if (/^G/.test(n)) return r`\ \mathrm{S}`;
+  return '';
+}
+const KIND = { 'Ω':'Direnç', V:'Gerilim', A:'Akım', W:'Güç', J:'Enerji', C:'Yük', F:'Kapasite', H:'Endüktans' };
+function unitTex(x, unit){
+  const pre = [[1e9,'G'],[1e6,'M'],[1e3,'k'],[1,''],[1e-3,'m'],[1e-6,r`\mu `],[1e-9,'n'],[1e-12,'p']];
+  const a = Math.abs(x); let f = 1, p = '';
+  for (const [ff, pp] of pre) if (a >= ff * 0.9999999) { f = ff; p = pp; break; }
+  const u = unit === 'Ω' ? r`\Omega` : r`\mathrm{${unit}}`;
+  return r`${fmt(x / f)}\ ${p ? (p.startsWith('\\') ? p : r`\mathrm{${p}}`) : ''}${u}`;
+}
+
+/* Metindeki verilenleri + denklemleri bulur, kurar, çözer ve sağlar */
+function analyzeEquations(text){
+  const givens = [], knowns = {}, eqLines = new Set();
+  const namedSrc = r`([A-Za-z][A-Za-z0-9_]*)\s*=\s*([+-]?\d+(?:[.,]\d+)?)\s*([afpnuµμmkKMGT]?)\s*(Ω|Ω|ohm|V|A|W|J|C|F|H)(?![A-Za-z0-9_])`;
+  const named = new RegExp(namedSrc, 'g');
+  const spans = []; let m;
+  while ((m = named.exec(text))) {
+    const unit = (m[4] === 'Ω' || m[4].toLowerCase() === 'ohm') ? 'Ω' : m[4];
+    const val = parseFloat(m[2].replace(',', '.')) * (m[3] ? SI[m[3]] : 1);
+    if (!(m[1] in knowns)) { givens.push({ name:m[1], value:val, unit, kind:KIND[unit] || '' }); knowns[m[1]] = val; }
+    spans.push([m.index, m.index + m[0].length]);
+  }
+  const anon = /(\d+(?:[.,]\d+)?)\s*([pnuµμmkKMG]?)\s*(Ω|Ω|ohm|V|A|W)(?![A-Za-z0-9_])/g;
+  const seen = new Set(givens.map(g => g.value + g.unit));
+  while ((m = anon.exec(text))) {
+    if (spans.some(([a, b]) => m.index >= a && m.index < b)) continue;
+    const prev = text[m.index - 1]; if (prev && /[A-Za-z0-9_.]/.test(prev)) continue;
+    const unit = (m[3] === 'Ω' || m[3].toLowerCase() === 'ohm') ? 'Ω' : m[3];
+    const val = parseFloat(m[1].replace(',', '.')) * (m[2] ? SI[m[2]] : 1);
+    const key = val + unit; if (seen.has(key)) continue; seen.add(key);
+    givens.push({ name:null, value:val, unit, kind:KIND[unit] || '' });
+  }
+  const eqs = [];
+  for (const raw of text.split(/\n|;/)) {
+    let line = raw.trim(); if (!line) continue;
+    const eqCount = (line.match(/=/g) || []).length;
+    if (new RegExp(namedSrc).test(line)) {
+      const rest = line.replace(new RegExp(namedSrc, 'g'), '').replace(/[,\s.;:]/g, '');
+      if (!rest.length) eqLines.add(raw.trim());
+      continue;
+    }
+    if (eqCount !== 1) continue;
+    const eqPos = line.indexOf('=');
+    const colon = line.lastIndexOf(':', eqPos);
+    let label = '';
+    if (colon >= 0) { label = line.slice(0, colon).trim(); line = line.slice(colon + 1).trim(); }
+    line = line.replace(/^(?:[*•]|-(?=\s))\s*/, '').replace(/^\(?\d+[).]\s+/, '').replace(/[.,]\s*$/, '');
+    const [ls, rs] = line.split('=');
+    if (!ls || !rs || looksProse(ls) || looksProse(rs)) continue;
+    let A, B;
+    try { A = parseExpr(ls); B = parseExpr(rs); } catch (e) { continue; }
+    const vs = new Set([...varsOf(A), ...varsOf(B)]);
+    if (!vs.size) continue;
+    if (A.k === 'var' && varsOf(B).size === 0) {
+      if (!(A.v in knowns)) { try { const val = ev(B, {}); knowns[A.v] = val; givens.push({ name:A.v, value:val, unit:'', kind:'Bilinen' }); } catch (e) {} }
+      eqLines.add(raw.trim()); continue;
+    }
+    eqs.push({ src: line.trim(), A, B, label }); eqLines.add(raw.trim());
+  }
+  const given = { ...knowns };
+  eqs.forEach(e => {
+    e.tex = `${tex(e.A)} = ${tex(e.B)}`;
+    const allV = [...varsOf(e.A), ...varsOf(e.B)];
+    const SA = subst(e.A, given), SB = subst(e.B, given);
+    if (allV.some(v => v in given)) e.substTex = `${tex(SA)} = ${tex(SB)}`;
+    const U = [...new Set([...varsOf(SA), ...varsOf(SB)])];
+    const lin = U.length ? linearize(env => ev(SA, env) - ev(SB, env), U) : null;
+    if (lin) {
+      const LT = termsOf(SA), RT = termsOf(SB);
+      const dens = [...LT, ...RT].map(t => numDen(t.n));
+      let L = 1;
+      if (dens.every(d => Number.isInteger(d) && d > 0 && d < 1e6) && dens.some(d => d > 1) && LT.length + RT.length <= 10) {
+        L = dens.reduce(lcm, 1); e.lcm = L;
+        const side = (arr, fn) => arr.map((t, i) => {
+          const k = L / numDen(t.n);
+          const sg = t.s < 0 ? (i === 0 ? '-' : ' - ') : (i === 0 ? '' : ' + ');
+          return sg + fn(t, k);
+        }).join('') || '0';
+        e.braceTex = side(LT, (t, k) => r`\underbrace{${tex(t.n)}}_{\times ${k}}`) + ' = ' + side(RT, (t, k) => r`\underbrace{${tex(t.n)}}_{\times ${k}}`);
+        e.expTex = side(LT, (t, k) => expandTerm(t.n, k)) + ' = ' + side(RT, (t, k) => expandTerm(t.n, k));
+      }
+      e.simpTex = linTex(lin.a.map(x => x * L), U, lin.b * L);
+    } else if (U.length) e.nonlinear = true;
+  });
+  // --- çözüm: önce tek bilinmeyenliler, sonra doğrusal sistem ---
+  const K = { ...knowns }, solution = {}, log = [], solved = new Set();
+  let progress = true, guard = 0, singular = false;
+  while (progress && guard++ < 25) {
+    progress = false;
+    eqs.forEach((e, idx) => {
+      if (solved.has(idx)) return;
+      const un = [...new Set([...varsOf(e.A), ...varsOf(e.B)])].filter(v => !(v in K));
+      if (!un.length) { solved.add(idx); return; }
+      if (un.length !== 1) return;
+      const u = un[0];
+      const g = x => ev(e.A, { ...K, [u]: x }) - ev(e.B, { ...K, [u]: x });
+      const x = solve1D(g); if (x === null || !isFinite(x)) return;
+      K[u] = x; solution[u] = x; solved.add(idx);
+      log.push(`Denklem ${idx + 1} tek bilinmeyenli → $${varTex(u)} = ${fmt(x)}${unitOf(u)}$`);
+      progress = true;
+    });
+    if (progress) continue;
+    const rem = eqs.map((_, i) => i).filter(i => !solved.has(i));
+    if (!rem.length) break;
+    const U = [...new Set(rem.flatMap(i => [...varsOf(eqs[i].A), ...varsOf(eqs[i].B)]))].filter(v => !(v in K));
+    if (!U.length || rem.length < U.length) break;
+    const rowsL = rem.map(i => linearize(env => ev(eqs[i].A, env) - ev(eqs[i].B, env), U, K));
+    if (rowsL.some(x => !x)) break;
+    const x = gauss(rowsL.map(q => q.a), rowsL.map(q => q.b));
+    if (!x) { singular = true; break; }
+    U.forEach((u, j) => { K[u] = x[j]; solution[u] = x[j]; });
+    rem.forEach(i => solved.add(i));
+    log.push(`Denklem ${rem.map(i => i + 1).join(', ')} birlikte çözüldü (Gauss yok etme, ${U.length} bilinmeyen) → ` + U.map((u, j) => `$${varTex(u)} = ${fmt(x[j])}${unitOf(u)}$`).join(', '));
+    progress = true;
+  }
+  const unknowns = [...new Set(eqs.flatMap(e => [...varsOf(e.A), ...varsOf(e.B)]))].filter(v => !(v in knowns));
+  const missing = unknowns.filter(u => !(u in solution));
+  const checks = [];
+  if (Object.keys(solution).length) eqs.forEach((e, i) => {
+    try {
+      const terms = termsOf(e.A);
+      const vals = terms.map(t => t.s * ev(t.n, K));
+      const lhs = ev(e.A, K), rhs = ev(e.B, K);
+      const ok = Math.abs(lhs - rhs) <= 1e-6 * (1 + Math.abs(rhs));
+      const parts = vals.map((v, j) => j === 0 ? fmt(v, 5) : (v < 0 ? ' - ' + fmt(-v, 5) : ' + ' + fmt(v, 5))).join('');
+      checks.push(`Denklem ${i + 1}: $${terms.length > 1 ? parts + ' = ' : ''}${fmt(lhs, 5)}$ , sağ taraf $= ${fmt(rhs, 5)}$ ${ok ? '✅' : '❌'}`);
+    } catch (err) {}
+  });
+  return { givens, knowns, eqs, eqLines, unknowns, missing, solution, log, checks, singular };
+}
+function numVal(s){
+  const a = parseSI(s); if (isFinite(a)) return a;
+  try { const n = parseExpr(String(s)); if (varsOf(n).size) return NaN; return ev(n, {}); } catch (e) { return NaN; }
+}
+
+/* =====================================================================
+   3) ARAYÜZ BİLEŞENLERİ
+   ===================================================================== */
+const cx = (...a) => a.filter(Boolean).join(' ');
+const inputCls = 'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/60 placeholder:text-slate-400';
+const btnP = 'inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold bg-sky-600 hover:bg-sky-500 active:scale-[.98] text-white shadow-sm shadow-sky-600/20 transition disabled:opacity-50 disabled:pointer-events-none';
+const btnG = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[.98] transition disabled:opacity-50';
+
+function Tex({ m, d=false, className='' }){
+  const html = useMemo(() => kx(m, d), [m, d]);
+  return d ? <div className={cx('overflow-x-auto', className)} dangerouslySetInnerHTML={{ __html: html }}/>
+           : <span className={className} dangerouslySetInnerHTML={{ __html: html }}/>;
+}
+function Rich({ t, className='', block=false }){
+  const html = useMemo(() => richHtml(t || ''), [t]);
+  const Tag = block ? 'div' : 'span';
+  return <Tag className={className} dangerouslySetInnerHTML={{ __html: html }}/>;
+}
+function Md({ src, className='' }){
+  const html = useMemo(() => mdHtml(src), [src]);
+  return <div className={cx('md', className)} dangerouslySetInnerHTML={{ __html: html }}/>;
+}
+function Card({ children, className='' }){
+  return <div className={cx('rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur shadow-sm', className)}>{children}</div>;
+}
+const CALL = {
+  warn:   { icon:'⚠️', title:'Kritik Uyarı',     c:'border-amber-500 bg-amber-500/10',   h:'text-amber-700 dark:text-amber-300' },
+  danger: { icon:'⛔', title:'Sık Yapılan Hata', c:'border-rose-500 bg-rose-500/10',     h:'text-rose-700 dark:text-rose-300' },
+  tip:    { icon:'💡', title:'İpucu',            c:'border-emerald-500 bg-emerald-500/10', h:'text-emerald-700 dark:text-emerald-300' },
+  info:   { icon:'ℹ️', title:'Not',              c:'border-sky-500 bg-sky-500/10',       h:'text-sky-700 dark:text-sky-300' },
+};
+function Callout({ kind='warn', title, children, className='' }){
+  const k = CALL[kind];
+  return (
+    <div className={cx('border-l-4 rounded-xl px-4 py-3 text-sm leading-relaxed', k.c, className)}>
+      <div className={cx('font-semibold mb-1 flex items-center gap-2', k.h)}><span>{k.icon}</span>{title || k.title}</div>
+      <div className="text-slate-700 dark:text-slate-300">{typeof children === 'string' ? <Rich t={children}/> : children}</div>
+    </div>
+  );
+}
+function SectionTitle({ icon, title, sub, right }){
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2"><span>{icon}</span>{title}</h2>
+        {sub && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{sub}</p>}
+      </div>
+      {right}
+    </div>
+  );
+}
+function Pills({ items, value, onChange, className='' }){
+  return (
+    <div className={cx('flex flex-wrap gap-2', className)}>
+      {items.map(it => (
+        <button key={it.v} onClick={() => onChange(it.v)}
+          className={cx('px-3.5 py-1.5 rounded-full text-sm font-medium border transition',
+            value === it.v ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
+                           : 'border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800')}>
+          {it.l}
+        </button>
+      ))}
+    </div>
+  );
+}
+function Seg({ value, onChange, options, small }){
+  return (
+    <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-700 p-0.5 bg-slate-100/70 dark:bg-slate-800/60">
+      {options.map(o => (
+        <button key={o.v} onClick={() => onChange(o.v)}
+          className={cx('rounded-md font-medium transition', small ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm',
+            value === o.v ? 'bg-white dark:bg-slate-950 shadow text-sky-700 dark:text-sky-300' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100')}>
+          {o.l}
+        </button>
+      ))}
+    </div>
+  );
+}
+function Field({ label, children, hint }){
+  return (
+    <label className="block">
+      <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{label}</span>
+      {children}
+      {hint && <span className="block text-[11px] text-slate-400 mt-1">{hint}</span>}
+    </label>
+  );
+}
+function useLocal(key, init){
+  const [v, setV] = useState(() => { try { const s = localStorage.getItem(key); return s !== null ? JSON.parse(s) : init; } catch (e) { return init; } });
+  useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) {} }, [key, v]);
+  return [v, setV];
+}
+function copyText(t){
+  if (navigator.clipboard) return navigator.clipboard.writeText(t).catch(() => fallbackCopy(t));
+  fallbackCopy(t);
+}
+function fallbackCopy(t){ const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); }
+function CopyBtn({ text, label='Kopyala', className='' }){
+  const [ok, setOk] = useState(false);
+  return <button className={cx(btnG, className)} onClick={() => { copyText(typeof text === 'function' ? text() : text); setOk(true); setTimeout(() => setOk(false), 1500); }}>{ok ? '✓ Kopyalandı' : '📋 ' + label}</button>;
+}
+
+/* =====================================================================
+   4) DEVRE ŞEMASI (SVG) İLKELLERİ
+   ===================================================================== */
+const SW = { stroke:'currentColor', strokeWidth:1.8, fill:'none', strokeLinecap:'round', strokeLinejoin:'round' };
+const ACC = '#0ea5e9';
+function geo(a, b){
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+  const u = [dx / L, dy / L];
+  return { u, n:[-u[1], u[0]], m:[(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], vert: Math.abs(dy) > Math.abs(dx) };
+}
+const pt = (p, u, k, n, j=0) => [p[0] + u[0] * k + (n ? n[0] * j : 0), p[1] + u[1] * k + (n ? n[1] * j : 0)];
+const PS = arr => arr.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+function ST({ x, y, t, a='start', size=12, color, weight, italic }){
+  const parts = String(t).split(/(_\{[^}]*\}|_[A-Za-z0-9]+)/).filter(Boolean);
+  let sh = false; const out = [];
+  parts.forEach((p, i) => {
+    if (p[0] === '_' && p.length > 1) { const s = p[1] === '{' ? p.slice(2, -1) : p.slice(1); out.push(<tspan key={i} dy={4} fontSize={size * 0.72}>{s}</tspan>); sh = true; }
+    else { out.push(<tspan key={i} dy={sh ? -4 : 0}>{p}</tspan>); sh = false; }
+  });
+  return <text x={x} y={y} textAnchor={a} fontSize={size} fill={color || 'currentColor'} fontWeight={weight ? 700 : 500} fontStyle={italic ? 'italic' : 'normal'} style={{ fontFamily:'Inter, sans-serif' }}>{out}</text>;
+}
+function Wire({ p, dash, color }){ return <polyline points={p} {...SW} stroke={color || 'currentColor'} strokeDasharray={dash}/>; }
+function Dot({ x, y }){ return <circle cx={x} cy={y} r={3.3} fill="currentColor"/>; }
+function Term({ x, y, label, side='r' }){
+  return <g><circle cx={x} cy={y} r={4.2} className="fill-white dark:fill-slate-900" stroke="currentColor" strokeWidth={1.8}/>
+    {label && <ST x={side === 'r' ? x + 10 : x - 10} y={y + 4} t={label} a={side === 'r' ? 'start' : 'end'} size={13} weight/>}</g>;
+}
+function Ground({ x, y }){
+  return <g {...SW}><line x1={x} y1={y} x2={x} y2={y + 8}/><line x1={x - 10} y1={y + 8} x2={x + 10} y2={y + 8}/><line x1={x - 6} y1={y + 12} x2={x + 6} y2={y + 12}/><line x1={x - 2} y1={y + 16} x2={x + 2} y2={y + 16}/></g>;
+}
+function labelPos(g, lo, defV, defH){
+  if (lo) return { x:g.m[0] + lo[0], y:g.m[1] + lo[1], a:lo[2] || 'middle' };
+  return g.vert ? { x:g.m[0] + defV[0], y:g.m[1] + defV[1], a:defV[2] } : { x:g.m[0] + defH[0], y:g.m[1] + defH[1], a:defH[2] };
+}
+function Res({ a, b, label, lo, color, variable }){
+  const g = geo(a, b), s = pt(g.m, g.u, -18);
+  const T = [3, 9, 15, 21, 27, 33, 36], O = [7, -7, 7, -7, 7, -7, 0];
+  const pts = [a, s, ...T.map((t, i) => pt(s, g.u, t, g.n, O[i])), b];
+  const L = labelPos(g, lo, [14, 4, 'start'], [0, -13, 'middle']);
+  return <g>
+    <polyline points={PS(pts)} {...SW} stroke={color || 'currentColor'}/>
+    {variable && <g stroke={ACC} strokeWidth={1.6} fill="none"><line x1={g.m[0] - 16} y1={g.m[1] + 16} x2={g.m[0] + 16} y2={g.m[1] - 16}/><polygon points={`${g.m[0] + 18},${g.m[1] - 18} ${g.m[0] + 9},${g.m[1] - 15} ${g.m[0] + 15},${g.m[1] - 9}`} fill={ACC}/></g>}
+    {label && <ST x={L.x} y={L.y} t={label} a={L.a}/>}
+  </g>;
+}
+function SrcBody({ g, dep }){
+  if (dep) { const r = 16; const P = [pt(g.m, g.u, -r), pt(g.m, g.n, r), pt(g.m, g.u, r), pt(g.m, g.n, -r)]; return <polygon points={PS(P)} {...SW}/>; }
+  return <circle cx={g.m[0]} cy={g.m[1]} r={15} {...SW}/>;
+}
+function VSrc({ a, b, label, plus='b', lo, dep }){
+  const g = geo(a, b), r = dep ? 16 : 15;
+  const pp = pt(g.m, g.u, plus === 'a' ? -7 : 7), mp = pt(g.m, g.u, plus === 'a' ? 7 : -7);
+  const L = labelPos(g, lo, [-22, 4, 'end'], [0, -22, 'middle']);
+  return <g>
+    <polyline points={PS([a, pt(g.m, g.u, -r)])} {...SW}/><polyline points={PS([pt(g.m, g.u, r), b])} {...SW}/>
+    <SrcBody g={g} dep={dep}/>
+    <text x={pp[0]} y={pp[1]} textAnchor="middle" dominantBaseline="central" fontSize={13} fontWeight={700} fill="currentColor">+</text>
+    <text x={mp[0]} y={mp[1]} textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight={700} fill="currentColor">−</text>
+    {label && <ST x={L.x} y={L.y} t={label} a={L.a}/>}
+  </g>;
+}
+function ISrc({ a, b, label, to='b', lo, dep }){
+  const g = geo(a, b), r = dep ? 16 : 15;
+  const d = to === 'b' ? g.u : [-g.u[0], -g.u[1]];
+  const tail = pt(g.m, d, -8), tip = pt(g.m, d, 9);
+  const h1 = pt(tip, d, -6, g.n, 4), h2 = pt(tip, d, -6, g.n, -4);
+  const L = labelPos(g, lo, [-22, 4, 'end'], [0, -22, 'middle']);
+  return <g>
+    <polyline points={PS([a, pt(g.m, g.u, -r)])} {...SW}/><polyline points={PS([pt(g.m, g.u, r), b])} {...SW}/>
+    <SrcBody g={g} dep={dep}/>
+    <line x1={tail[0]} y1={tail[1]} x2={pt(tip, d, -3)[0]} y2={pt(tip, d, -3)[1]} {...SW}/>
+    <polygon points={PS([tip, h1, h2])} fill="currentColor"/>
+    {label && <ST x={L.x} y={L.y} t={label} a={L.a}/>}
+  </g>;
+}
+function Arrow({ a, b, label, color=ACC, lo=[0, -8, 'middle'] }){
+  const g = geo(a, b); const h1 = pt(b, g.u, -7, g.n, 4), h2 = pt(b, g.u, -7, g.n, -4);
+  return <g><line x1={a[0]} y1={a[1]} x2={pt(b, g.u, -4)[0]} y2={pt(b, g.u, -4)[1]} stroke={color} strokeWidth={2} strokeLinecap="round"/>
+    <polygon points={PS([b, h1, h2])} fill={color}/>{label && <ST x={g.m[0] + lo[0]} y={g.m[1] + lo[1]} t={label} a={lo[2]} color={color} weight/>}</g>;
+}
+function MeshArrow({ cx: X, cy: Y, label, r=20, color='#8b5cf6' }){
+  const A = d => [X + r * Math.cos(d * Math.PI / 180), Y + r * Math.sin(d * Math.PI / 180)];
+  const s = A(120), e = A(60);
+  return <g>
+    <path d={`M${s[0]} ${s[1]} A ${r} ${r} 0 1 1 ${e[0]} ${e[1]}`} fill="none" stroke={color} strokeWidth={2}/>
+    <polygon points="0,0 -8,-4.5 -8,4.5" fill={color} transform={`translate(${e[0]},${e[1]}) rotate(150)`}/>
+    <ST x={X} y={Y + 4} t={label} a="middle" color={color} weight/>
+  </g>;
+}
+function Ckt({ w, h, children, className='', x0=0 }){
+  return <svg viewBox={`${x0} 0 ${w} ${h}`} className={cx('w-full h-auto text-slate-700 dark:text-slate-200 select-none', className)} style={{ maxHeight: h * 1.5 }}>{children}</svg>;
+}
+
+/* ---- hazır devreler ---- */
+function NodeCircuit({ vs='180 V', r1='90 Ω', r2='150 Ω', is='2 A', node='A', killV, killI, title }){
+  return <Ckt w={370} h={195}>
+    {killV ? <g><Wire p="70,40 70,160" color="#f43f5e"/><ST x={62} y={104} t="kısa devre" a="end" size={11} color="#f43f5e"/></g>
+           : <VSrc a={[70, 160]} b={[70, 40]} plus="b" label={vs}/>}
+    <Wire p="70,40 95,40"/><Res a={[95, 40]} b={[165, 40]} label={r1}/><Wire p="165,40 310,40"/>
+    <Res a={[210, 40]} b={[210, 160]} label={r2}/>
+    {killI ? <g><Wire p="310,40 310,82"/><Wire p="310,118 310,160"/><ST x={322} y={104} t="açık devre" size={11} color="#f43f5e"/></g>
+           : <ISrc a={[310, 160]} b={[310, 40]} to="b" label={is} lo={[22, 4, 'start']}/>}
+    <Wire p="70,160 310,160"/><Dot x={210} y={40}/><Dot x={210} y={160}/>
+    <ST x={210} y={28} t={'V_' + node} a="middle" weight color={ACC}/>
+    <Ground x={140} y={160}/>
+    {title && <ST x={185} y={192} t={title} a="middle" size={11}/>}
+  </Ckt>;
+}
+function SupernodeCircuit(){
+  return <Ckt w={380} h={190}>
+    <ISrc a={[50, 160]} b={[50, 40]} to="b" label="6 A"/>
+    <Wire p="50,40 130,40"/><Res a={[130, 40]} b={[130, 160]} label="2 Ω"/>
+    <VSrc a={[130, 40]} b={[250, 40]} plus="b" label="10 V"/>
+    <Res a={[250, 40]} b={[250, 160]} label="4 Ω"/><Wire p="50,160 250,160"/>
+    <Dot x={130} y={40}/><Dot x={250} y={40}/>
+    <ST x={122} y={60} t="V_1" a="end" weight color={ACC}/><ST x={258} y={60} t="V_2" weight color={ACC}/>
+    <ellipse cx={190} cy={40} rx={86} ry={26} fill="none" stroke="#8b5cf6" strokeWidth={1.6} strokeDasharray="6 4"/>
+    <ST x={300} y={30} t="süperdüğüm" color="#8b5cf6" size={11} weight/>
+    <Ground x={190} y={160}/>
+  </Ckt>;
+}
+function MeshCircuit(){
+  return <Ckt w={400} h={190}>
+    <VSrc a={[60, 160]} b={[60, 40]} plus="b" label="10 V"/>
+    <Res a={[60, 40]} b={[200, 40]} label="2 Ω"/><Res a={[200, 40]} b={[200, 160]} label="4 Ω"/>
+    <Res a={[200, 40]} b={[340, 40]} label="6 Ω"/>
+    <VSrc a={[340, 160]} b={[340, 40]} plus="b" label="4 V" lo={[22, 4, 'start']}/>
+    <Wire p="60,160 340,160"/><Dot x={200} y={40}/><Dot x={200} y={160}/>
+    <MeshArrow cx={130} cy={100} label="I_1"/><MeshArrow cx={270} cy={100} label="I_2"/>
+  </Ckt>;
+}
+function TheveninCircuitA(){
+  return <Ckt w={400} h={190}>
+    <VSrc a={[60, 160]} b={[60, 40]} plus="b" label="12 V"/>
+    <Res a={[60, 40]} b={[170, 40]} label="4 Ω"/><Res a={[170, 40]} b={[170, 160]} label="12 Ω"/>
+    <Res a={[170, 40]} b={[280, 40]} label="1 Ω"/><Wire p="280,40 330,40"/><Wire p="60,160 330,160"/>
+    <Dot x={170} y={40}/><Dot x={170} y={160}/><Term x={330} y={40} label="a"/><Term x={330} y={160} label="b"/>
+    <Arrow a={[355, 140]} b={[355, 60]} label="" color="#10b981"/><ST x={362} y={104} t="V_th" color="#10b981" weight/>
+  </Ckt>;
+}
+function DepCircuit(){
+  return <Ckt w={420} h={195}>
+    <VSrc a={[60, 160]} b={[60, 50]} plus="b" label="10 V"/>
+    <Res a={[60, 50]} b={[170, 50]} label="2 Ω" lo={[0, 22, 'middle']}/>
+    <Arrow a={[95, 28]} b={[138, 28]} label="i_x" lo={[0, -7, 'middle']}/>
+    <ISrc a={[170, 160]} b={[170, 50]} to="b" dep label="0.5 i_x" lo={[24, 4, 'start']}/>
+    <Wire p="170,50 340,50"/><Res a={[270, 50]} b={[270, 160]} label="4 Ω"/><Wire p="60,160 340,160"/>
+    <Dot x={170} y={50}/><Dot x={270} y={50}/><Dot x={170} y={160}/><Dot x={270} y={160}/>
+    <Term x={340} y={50} label="a"/><Term x={340} y={160} label="b"/>
+    <ST x={170} y={40} t="V_a" a="middle" weight color={ACC}/>
+  </Ckt>;
+}
+function TheveninEq({ vth='V_th', rth='R_th', ro, norton, nlabel='I_N' }){
+  if (norton) return <Ckt w={320} h={190}>
+    <ISrc a={[60, 160]} b={[60, 40]} to="b" label={nlabel}/>
+    <Wire p="60,40 230,40"/><Res a={[150, 40]} b={[150, 160]} label={rth}/><Wire p="60,160 230,160"/>
+    <Dot x={150} y={40}/><Dot x={150} y={160}/><Term x={230} y={40} label="a"/><Term x={230} y={160} label="b"/>
+  </Ckt>;
+  return <Ckt w={ro ? 360 : 300} h={190}>
+    <VSrc a={[60, 160]} b={[60, 40]} plus="b" label={vth}/>
+    <Res a={[60, 40]} b={[180, 40]} label={rth}/><Wire p="180,40 230,40"/><Wire p="60,160 230,160"/>
+    <Term x={230} y={40} label={ro ? '' : 'a'}/><Term x={230} y={160} label={ro ? '' : 'b'}/>
+    {ro && <g><Wire p="234,40 300,40 300,60"/><Res a={[300, 60]} b={[300, 140]} label={ro} variable lo={[18, 4, 'start']}/><Wire p="300,140 300,160 234,160"/>
+      <ST x={226} y={30} t="a" a="middle" weight/><ST x={226} y={182} t="b" a="middle" weight/></g>}
+  </Ckt>;
+}
+function SourceTransformPair({ V='V_s', I='I_s = V_s / R', R='R' }){
+  return <Ckt w={470} h={185}>
+    <VSrc a={[50, 150]} b={[50, 40]} plus="b" label={V} lo={[-20, 4, 'end']}/>
+    <Res a={[50, 40]} b={[150, 40]} label={R}/><Wire p="150,40 185,40"/><Wire p="50,150 185,150"/>
+    <Term x={185} y={40} label="a"/><Term x={185} y={150} label="b"/>
+    <ST x={240} y={102} t="⇄" a="middle" size={26} color={ACC} weight/>
+    <ISrc a={[300, 150]} b={[300, 40]} to="b" label={I} lo={[-20, 4, 'end']}/>
+    <Wire p="300,40 420,40"/><Res a={[365, 40]} b={[365, 150]} label={R}/><Wire p="300,150 420,150"/>
+    <Dot x={365} y={40}/><Dot x={365} y={150}/><Term x={420} y={40} label="a"/><Term x={420} y={150} label="b"/>
+  </Ckt>;
+}
+
+/* =====================================================================
+   5) MODÜL 1 — AKILLI KONU NOTLARI VE FORMÜL KARTLARI
+   ===================================================================== */
+const PREFIXES = [
+  { n:'atto',  s:'a', e:-18 }, { n:'femto', s:'f', e:-15 }, { n:'piko', s:'p', e:-12 }, { n:'nano', s:'n', e:-9 },
+  { n:'mikro', s:'µ', e:-6, t:r`\mu` }, { n:'mili', s:'m', e:-3 }, { n:'(temel)', s:'', e:0 },
+  { n:'kilo',  s:'k', e:3 }, { n:'mega', s:'M', e:6 }, { n:'giga', s:'G', e:9 }, { n:'tera', s:'T', e:12 },
+];
+const UNITS = [{ u:'A', t:r`\mathrm{A}` }, { u:'V', t:r`\mathrm{V}` }, { u:'W', t:r`\mathrm{W}` }, { u:'J', t:r`\mathrm{J}` }, { u:'C', t:r`\mathrm{C}` }, { u:'Ω', t:r`\Omega` }, { u:'s', t:r`\mathrm{s}` }];
+function PrefixConverter(){
+  const [val, setVal] = useState('4.7');
+  const [from, setFrom] = useState(-3);
+  const [to, setTo] = useState(-6);
+  const [unit, setUnit] = useState('A');
+  const x = numVal(val);
+  const P = e => PREFIXES.find(p => p.e === e);
+  const uT = UNITS.find(q => q.u === unit).t;
+  const pT = p => p.e === 0 ? '' : (p.t || r`\mathrm{${p.s}}`);
+  const res = x * Math.pow(10, from - to);
+  return (
+    <Card className="p-5">
+      <h3 className="font-bold mb-1">SI Birim Önekleri</h3>
+      <p className="text-xs text-slate-500 mb-4">Bir öneke tıkla → dönüştürücüde “kaynak önek” olarak seçilir (mavi). Hedef önek mor renkte gösterilir.</p>
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-5">
+        {PREFIXES.map(p => (
+          <button key={p.e} onClick={() => setFrom(p.e)}
+            className={cx('rounded-xl border px-2 py-2 text-left transition hover:-translate-y-0.5',
+              from === p.e ? 'border-sky-500 bg-sky-500/10' : to === p.e ? 'border-violet-500 bg-violet-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-slate-400')}>
+            <div className="flex items-baseline justify-between"><span className="text-lg font-bold font-mono">{p.s || '—'}</span><Tex m={`10^{${p.e}}`} className="text-xs"/></div>
+            <div className="text-[11px] text-slate-500 capitalize">{p.n}</div>
+          </button>
+        ))}
+      </div>
+      <div className="grid sm:grid-cols-4 gap-3 items-end">
+        <Field label="Değer"><input className={inputCls} value={val} onChange={e => setVal(e.target.value)}/></Field>
+        <Field label="Kaynak önek"><select className={inputCls} value={from} onChange={e => setFrom(+e.target.value)}>{PREFIXES.map(p => <option key={p.e} value={p.e}>{p.n} ({p.s || '1'})</option>)}</select></Field>
+        <Field label="Hedef önek"><select className={inputCls} value={to} onChange={e => setTo(+e.target.value)}>{PREFIXES.map(p => <option key={p.e} value={p.e}>{p.n} ({p.s || '1'})</option>)}</select></Field>
+        <Field label="Birim"><select className={inputCls} value={unit} onChange={e => setUnit(e.target.value)}>{UNITS.map(q => <option key={q.u}>{q.u}</option>)}</select></Field>
+      </div>
+      <div className="mt-4 rounded-xl bg-slate-100 dark:bg-slate-800/60 px-4 py-3 text-center">
+        {isFinite(x) ? <Tex d m={r`${fmt(x)}\ ${pT(P(from))}${uT} = ${sciTex(x * Math.pow(10, from))}\ ${uT} = \boxed{${sciTex(res)}\ ${pT(P(to))}${uT}}`}/> : <span className="text-rose-500 text-sm">Geçerli bir sayı gir.</span>}
+      </div>
+    </Card>
+  );
+}
+const FORMULA_CARDS = [
+  { t:'Akım ↔ Yük', f:r`i(t) = \frac{dq(t)}{dt}`, c:'from-sky-500 to-cyan-400',
+    back:[r`Birim: $1\ \mathrm{A} = 1\ \mathrm{C/s}$`, r`**Grafik:** $q(t)$ eğrisinin **eğimi** o andaki akımdır.`, r`Akım yönü = pozitif yüklerin hareket yönü (elektronların tersi).`] },
+  { t:'Yük ↔ Akım', f:r`q(t) = \int_{-\infty}^{t} i(x)\,dx`, c:'from-cyan-500 to-teal-400',
+    back:[r`$q(t) = q(t_0) + \int_{t_0}^{t} i(x)\,dx$`, r`**Grafik:** $i(t)$ altındaki **alan** = $\Delta q$. Eksen altı alan **negatif**.`, r`Başlangıç yükü $q(t_0)$'ı eklemeyi unutma!`] },
+  { t:'Gerilim', f:r`v = \frac{dw}{dq}`, c:'from-violet-500 to-fuchsia-400',
+    back:[r`Birim: $1\ \mathrm{V} = 1\ \mathrm{J/C}$`, r`Birim yükü $b$'den $a$'ya taşımak için gereken enerji.`, r`$v_{ab} = v_a - v_b$ → çift indiste sıra önemli.`] },
+  { t:'Güç', f:r`p = \frac{dw}{dt} = v\,i`, c:'from-amber-500 to-orange-400',
+    back:[r`Birim: $1\ \mathrm{W} = 1\ \mathrm{J/s} = 1\ \mathrm{V\cdot A}$`, r`İşaret **pasif işaretleme**ye göre: akım + uçtan giriyorsa $p = +vi$.`, r`$p > 0$ güç alır (harcar) · $p < 0$ güç verir.`] },
+  { t:'Enerji', f:r`\Delta w = \int_{t_1}^{t_2} p\,dt`, c:'from-rose-500 to-pink-400',
+    back:[r`**Grafik:** $p(t)$ altındaki alan = enerji (J).`, r`$w(t)$ grafiğinin **eğimi** = güç.`, r`$1\ \mathrm{kWh} = 3.6\ \mathrm{MJ}$`] },
+  { t:'Ohm Yasası', f:r`v = iR,\quad p = i^2R = \frac{v^2}{R}`, c:'from-emerald-500 to-lime-400',
+    back:[r`Pasif işaretlemede direnç **daima** güç harcar: $p_R \ge 0$.`, r`İletkenlik $G = 1/R$ (siemens, S).`, r`Direnç için $p < 0$ bulduysan **işaret hatası** var!`] },
+];
+function FlipCard({ card }){
+  const [on, setOn] = useState(false);
+  return (
+    <div className={cx('flip h-56 cursor-pointer', on && 'on')} onClick={() => setOn(!on)}>
+      <div className="flip-inner">
+        <div className="face rounded-2xl overflow-hidden shadow-lg shadow-slate-900/5 dark:shadow-black/30">
+          <div className={cx('absolute inset-0 bg-gradient-to-br', card.c)}/>
+          <div className="absolute inset-[2px] rounded-[14px] bg-white dark:bg-slate-900 p-4 flex flex-col">
+            <div className="text-[11px] uppercase tracking-widest font-bold text-slate-500">{card.t}</div>
+            <div className="flex-1 grid place-items-center text-lg"><Tex d m={card.f}/></div>
+            <div className="text-[11px] text-slate-400 text-right">↻ çevirmek için tıkla</div>
+          </div>
+        </div>
+        <div className="face back rounded-2xl overflow-hidden">
+          <div className={cx('absolute inset-0 bg-gradient-to-br', card.c)}/>
+          <div className="relative h-full p-4 text-white flex flex-col">
+            <div className="text-[11px] uppercase tracking-widest font-bold opacity-90 mb-2">{card.t} · Notlar</div>
+            <ul className="space-y-2 text-sm leading-snug flex-1">{card.back.map((b, i) => <li key={i} className="flex gap-2"><span>▸</span><Rich t={b}/></li>)}</ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function niceTicks(lo, hi, n=6){
+  const span = hi - lo || 1; const raw = span / n; const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * p).find(k => k >= raw) || p * 10;
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function PlotFrame({ W, H, pad, xr, yr, xl, yl, children }){
+  const sx = t => pad.l + (t - xr[0]) / (xr[1] - xr[0]) * (W - pad.l - pad.r);
+  const sy = v => pad.t + (yr[1] - v) / (yr[1] - yr[0]) * (H - pad.t - pad.b);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto text-slate-600 dark:text-slate-300">
+      {niceTicks(yr[0], yr[1], 4).map(v => <g key={'y' + v}><line x1={pad.l} x2={W - pad.r} y1={sy(v)} y2={sy(v)} stroke="currentColor" strokeOpacity={v === 0 ? .55 : .1}/><text x={pad.l - 6} y={sy(v) + 3} fontSize={10} textAnchor="end" fill="currentColor">{fmt(v, 4)}</text></g>)}
+      {niceTicks(xr[0], xr[1], 8).map(v => <g key={'x' + v}><line y1={pad.t} y2={H - pad.b} x1={sx(v)} x2={sx(v)} stroke="currentColor" strokeOpacity={.08}/><text x={sx(v)} y={H - pad.b + 13} fontSize={10} textAnchor="middle" fill="currentColor">{fmt(v, 4)}</text></g>)}
+      <text x={W - pad.r} y={H - 3} fontSize={10} textAnchor="end" fill="currentColor">{xl}</text>
+      <text x={pad.l + 4} y={pad.t + 10} fontSize={11} fontWeight={700} fill="currentColor">{yl}</text>
+      {children(sx, sy)}
+    </svg>
+  );
+}
+const GMODES = {
+  area:   { inN:'i(t) [A]', outN:'q(t) − q(0) [C]', iv:'i', ov:'q', iu:r`\mathrm{A}`, ou:r`\mathrm{C}`, rule:'Alan → integral', def:'0,0; 1,10; 3,10; 4,0; 5,-5; 6,0' },
+  slope:  { inN:'q(t) [C]', outN:'i(t) [A]', iv:'q', ov:'i', iu:r`\mathrm{C}`, ou:r`\mathrm{A}`, rule:'Eğim → türev', def:'0,0; 2,4; 4,4; 6,-2; 8,0' },
+  energy: { inN:'p(t) [W]', outN:'w(t) − w(0) [J]', iv:'p', ov:'w', iu:r`\mathrm{W}`, ou:r`\mathrm{J}`, rule:'Alan → integral', def:'0,0; 2,6; 4,6; 5,-3; 6,0' },
+};
+function GraphLab(){
+  const [mode, setMode] = useState('area');
+  const [txt, setTxt] = useState(GMODES.area.def);
+  const [ts, setTs] = useState(3.5);
+  const M = GMODES[mode];
+  const pts = useMemo(() => {
+    const p = txt.split(';').map(s => s.split(',').map(x => parseFloat(x.trim()))).filter(a => a.length === 2 && a.every(isFinite)).sort((a, b) => a[0] - b[0]);
+    return p.filter((q, i) => i === 0 || q[0] !== p[i - 1][0]);
+  }, [txt]);
+  const ok = pts.length >= 2;
+  const t0 = ok ? pts[0][0] : 0, t1 = ok ? pts[pts.length - 1][0] : 1;
+  const T = Math.min(Math.max(ts, t0), t1);
+  const segIdx = t => { for (let k = 0; k < pts.length - 1; k++) if (t <= pts[k + 1][0]) return k; return pts.length - 2; };
+  const f = t => { const k = segIdx(t); const [a, fa] = pts[k], [b, fb] = pts[k + 1]; return fa + (fb - fa) * (t - a) / (b - a); };
+  const F = t => { let s = 0; for (let k = 0; k < pts.length - 1; k++) { const [a, fa] = pts[k], [b] = pts[k + 1]; if (t <= a) break; const e = Math.min(t, b); s += (fa + f(e)) / 2 * (e - a); } return s; };
+  const slopeOf = k => (pts[k + 1][1] - pts[k][1]) / (pts[k + 1][0] - pts[k][0]);
+  if (!ok) return <Card className="p-5"><p className="text-rose-500 text-sm">En az iki nokta gir (ör. 0,0; 1,5).</p><input className={inputCls + ' mt-2'} value={txt} onChange={e => setTxt(e.target.value)}/></Card>;
+  const vals = pts.map(p => p[1]);
+  const W = 560, H = 170, pad = { l:46, r:12, t:12, b:24 };
+  const yr1 = [Math.min(0, ...vals), Math.max(0, ...vals)]; const d1 = (yr1[1] - yr1[0]) * .12 || 1; yr1[0] -= d1; yr1[1] += d1;
+  let outPts, outY;
+  if (mode === 'slope') { outY = pts.slice(0, -1).map((_, k) => slopeOf(k)); }
+  else { outPts = Array.from({ length:241 }, (_, i) => { const t = t0 + (t1 - t0) * i / 240; return [t, F(t)]; }); outY = outPts.map(p => p[1]); }
+  const yr2 = [Math.min(0, ...outY), Math.max(0, ...outY)]; const d2 = (yr2[1] - yr2[0]) * .12 || 1; yr2[0] -= d2; yr2[1] += d2;
+  const k = segIdx(T);
+  const area = F(T);
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div><h3 className="font-bold">📈 Grafik Okuma Laboratuvarı</h3><p className="text-xs text-slate-500">Parça parça doğrusal bir dalga gir; alan/eğim kuralını canlı gör.</p></div>
+        <Seg value={mode} onChange={m => { setMode(m); setTxt(GMODES[m].def); }} options={[{ v:'area', l:'i → q (alan)' }, { v:'slope', l:'q → i (eğim)' }, { v:'energy', l:'p → w (alan)' }]} small/>
+      </div>
+      <Field label={`${M.inN} noktaları  (t,değer; t,değer; …)`}><input className={inputCls + ' font-mono'} value={txt} onChange={e => setTxt(e.target.value)}/></Field>
+      <div className="grid lg:grid-cols-2 gap-4 mt-4">
+        <PlotFrame W={W} H={H} pad={pad} xr={[t0, t1]} yr={yr1} xl="t [s]" yl={M.inN}>
+          {(sx, sy) => {
+            const poly = [[t0, 0], ...pts.filter(p => p[0] < T).map(p => [p[0], p[1]]), [T, f(T)], [T, 0]];
+            const ps = poly.map(p => sx(p[0]) + ',' + sy(p[1])).join(' ');
+            return <g>
+              <defs>
+                <clipPath id="gl-pos"><rect x={0} y={0} width={W} height={sy(0)}/></clipPath>
+                <clipPath id="gl-neg"><rect x={0} y={sy(0)} width={W} height={H}/></clipPath>
+              </defs>
+              {mode !== 'slope' && <g><polygon points={ps} fill="#0ea5e9" fillOpacity={.28} clipPath="url(#gl-pos)"/><polygon points={ps} fill="#f43f5e" fillOpacity={.28} clipPath="url(#gl-neg)"/></g>}
+              <polyline points={pts.map(p => sx(p[0]) + ',' + sy(p[1])).join(' ')} fill="none" stroke="#0ea5e9" strokeWidth={2.4}/>
+              {mode === 'slope' && <line x1={sx(pts[k][0])} y1={sy(pts[k][1])} x2={sx(pts[k + 1][0])} y2={sy(pts[k + 1][1])} stroke="#f59e0b" strokeWidth={5} strokeOpacity={.6} strokeLinecap="round"/>}
+              {pts.map((p, i) => <circle key={i} cx={sx(p[0])} cy={sy(p[1])} r={3} fill="#0ea5e9"/>)}
+              <line x1={sx(T)} x2={sx(T)} y1={pad.t} y2={H - pad.b} stroke="#f59e0b" strokeDasharray="4 3"/>
+              <circle cx={sx(T)} cy={sy(f(T))} r={4.5} fill="#f59e0b"/>
+            </g>;
+          }}
+        </PlotFrame>
+        <PlotFrame W={W} H={H} pad={pad} xr={[t0, t1]} yr={yr2} xl="t [s]" yl={M.outN}>
+          {(sx, sy) => mode === 'slope'
+            ? <g>{outY.map((v, i) => <g key={i}>
+                  <line x1={sx(pts[i][0])} x2={sx(pts[i + 1][0])} y1={sy(v)} y2={sy(v)} stroke={i === k ? '#f59e0b' : '#8b5cf6'} strokeWidth={2.6}/>
+                  {i > 0 && <line x1={sx(pts[i][0])} x2={sx(pts[i][0])} y1={sy(outY[i - 1])} y2={sy(v)} stroke="#8b5cf6" strokeDasharray="3 3" strokeOpacity={.6}/>}
+                </g>)}
+                <line x1={sx(T)} x2={sx(T)} y1={pad.t} y2={H - pad.b} stroke="#f59e0b" strokeDasharray="4 3"/></g>
+            : <g><polyline points={outPts.map(p => sx(p[0]) + ',' + sy(p[1])).join(' ')} fill="none" stroke="#8b5cf6" strokeWidth={2.4}/>
+                <line x1={sx(T)} x2={sx(T)} y1={pad.t} y2={H - pad.b} stroke="#f59e0b" strokeDasharray="4 3"/>
+                <circle cx={sx(T)} cy={sy(area)} r={4.5} fill="#f59e0b"/></g>}
+        </PlotFrame>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[220px]"><input type="range" className="w-full" min={t0} max={t1} step={(t1 - t0) / 400} value={T} onChange={e => setTs(+e.target.value)}/></div>
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-2 text-sm">
+          {mode === 'slope'
+            ? <Tex m={r`i(${fmt(T, 3)}) = \frac{\Delta q}{\Delta t} = \frac{${fmt(pts[k + 1][1])} - (${fmt(pts[k][1])})}{${fmt(pts[k + 1][0])} - ${fmt(pts[k][0])}} = ${fmt(slopeOf(k), 4)}\ \mathrm{A}`}/>
+            : <Tex m={r`${M.ov}(${fmt(T, 3)}) - ${M.ov}(${fmt(t0)}) = \int_{${fmt(t0)}}^{${fmt(T, 3)}} ${M.iv}\,dt = ${fmt(area, 5)}\ ${M.ou}`}/>}
+        </div>
+      </div>
+      <p className="text-xs text-slate-500 mt-2">Kural: <b>{M.rule}</b>. Mavi alan pozitif, kırmızı alan negatif katkıdır. {mode === 'slope' ? 'Doğrusal parçada akım sabittir (basamak).' : 'Doğrusal giriş → çıkış parabolik parçalardan oluşur.'}</p>
+    </Card>
+  );
+}
+function PassiveSignLab(){
+  const [v, setV] = useState('12'); const [i, setI] = useState('2'); const [dir, setDir] = useState('in');
+  const V = numVal(v), I = numVal(i);
+  const P = dir === 'in' ? V * I : -V * I;
+  const valid = isFinite(P);
+  return (
+    <Card className="p-5">
+      <h3 className="font-bold mb-1">🔌 Pasif İşaretleme Kuralı — Canlı Deneme</h3>
+      <p className="text-xs text-slate-500 mb-4">Akım referans yönü <b>+ uçtan giriyorsa</b> <Tex m="p = +vi"/>; <b>+ uçtan çıkıyorsa</b> <Tex m="p = -vi"/>. Sonuç pozitifse eleman güç <b>alır</b>, negatifse güç <b>verir</b>.</p>
+      <div className="grid md:grid-cols-[220px_1fr] gap-5 items-center">
+        <svg viewBox="0 0 220 180" className="w-full max-w-[220px] mx-auto text-slate-700 dark:text-slate-200">
+          <line x1={110} y1={10} x2={110} y2={55} {...SW}/><line x1={110} y1={125} x2={110} y2={170} {...SW}/>
+          <rect x={88} y={55} width={44} height={70} rx={8} {...SW} className={valid ? (P >= 0 ? 'fill-emerald-500/15' : 'fill-amber-500/20') : ''}/>
+          <text x={110} y={95} textAnchor="middle" fontSize={12} fill="currentColor" fontWeight={700}>{valid ? (P >= 0 ? 'ALIR' : 'VERİR') : '?'}</text>
+          <text x={146} y={72} fontSize={18} fontWeight={800} fill="#ef4444">+</text>
+          <text x={146} y={122} fontSize={20} fontWeight={800} fill="#3b82f6">−</text>
+          <ST x={168} y={100} t={'v = ' + v} size={12} weight/>
+          {dir === 'in' ? <Arrow a={[84, 14]} b={[84, 48]} color={ACC}/> : <Arrow a={[84, 48]} b={[84, 14]} color={ACC}/>}
+          <ST x={76} y={36} t={'i = ' + i} a="end" color={ACC} weight size={12}/>
+        </svg>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Gerilim v (V)"><input className={inputCls} value={v} onChange={e => setV(e.target.value)}/></Field>
+            <Field label="Akım i (A)"><input className={inputCls} value={i} onChange={e => setI(e.target.value)}/></Field>
+          </div>
+          <Seg value={dir} onChange={setDir} options={[{ v:'in', l:'Akım + uçtan GİRİYOR' }, { v:'out', l:'Akım + uçtan ÇIKIYOR' }]}/>
+          {valid && <div className={cx('rounded-xl px-4 py-3 border', P >= 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30')}>
+            <Tex d m={dir === 'in' ? r`p = +v\,i = (${fmt(V)})(${fmt(I)}) = ${fmt(P)}\ \mathrm{W}` : r`p = -v\,i = -(${fmt(V)})(${fmt(I)}) = ${fmt(P)}\ \mathrm{W}`}/>
+            <div className="text-sm font-semibold mt-1">{P > 0 ? '✅ p > 0 → Eleman güç ALIYOR (harcıyor / depoluyor)' : P < 0 ? '⚡ p < 0 → Eleman güç VERİYOR (kaynak gibi davranıyor)' : 'p = 0 → güç alışverişi yok'}</div>
+          </div>}
+        </div>
+      </div>
+      <Callout kind="danger" className="mt-4">{r`Gerilim kaynağı her zaman güç **vermez**! Akım kaynağın + ucundan **giriyorsa** kaynak güç **alır** (ör. şarj olan akü). İşareti kaynağın türüne göre değil, **akımın girdiği uca** göre belirle.`}</Callout>
+    </Card>
+  );
+}
+function SeriesISrcLab(){
+  const [i1, setI1] = useState('2'); const [d1, setD1] = useState('r');
+  const [i2, setI2] = useState('3'); const [d2, setD2] = useState('r');
+  const a = numVal(i1) * (d1 === 'r' ? 1 : -1), b = numVal(i2) * (d2 === 'r' ? 1 : -1);
+  const ok = isFinite(a) && isFinite(b) && Math.abs(a - b) < 1e-9 * (1 + Math.abs(a));
+  return (
+    <Card className="p-5">
+      <h4 className="font-bold mb-1">Seri Akım Kaynakları</h4>
+      <p className="text-xs text-slate-500 mb-2">Seri elemanlardan aynı akım geçer ⇒ seri akım kaynakları <b>aynı yön ve aynı büyüklükte</b> olmalıdır.</p>
+      <Ckt w={360} h={100}>
+        <Wire p="20,60 80,60"/><ISrc a={[80, 60]} b={[140, 60]} to={d1 === 'r' ? 'b' : 'a'} label={'I_1 = ' + i1 + ' A'}/>
+        <Wire p="140,60 220,60"/><ISrc a={[220, 60]} b={[280, 60]} to={d2 === 'r' ? 'b' : 'a'} label={'I_2 = ' + i2 + ' A'}/>
+        <Wire p="280,60 340,60"/><Dot x={180} y={60}/><ST x={180} y={84} t="ara düğüm" a="middle" size={10}/>
+      </Ckt>
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        <div className="flex gap-2"><input className={inputCls} value={i1} onChange={e => setI1(e.target.value)}/><Seg small value={d1} onChange={setD1} options={[{ v:'r', l:'→' }, { v:'l', l:'←' }]}/></div>
+        <div className="flex gap-2"><input className={inputCls} value={i2} onChange={e => setI2(e.target.value)}/><Seg small value={d2} onChange={setD2} options={[{ v:'r', l:'→' }, { v:'l', l:'←' }]}/></div>
+      </div>
+      <div className={cx('mt-3 rounded-lg px-3 py-2 text-sm font-medium', ok ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-rose-500/10 text-rose-700 dark:text-rose-300')}>
+        {ok ? '✅ Geçerli bağlantı: ara düğümde KCL sağlanıyor.' : <span>⛔ KCL ihlali! Ara düğümde <Tex m={r`-I_1 + I_2 = ${fmt(b - a)} \neq 0`}/> → devre tanımsız (fiziksel olarak imkânsız).</span>}
+      </div>
+    </Card>
+  );
+}
+function ParallelVSrcLab(){
+  const [v1, setV1] = useState('12'); const [p1, setP1] = useState('t');
+  const [v2, setV2] = useState('12'); const [p2, setP2] = useState('b');
+  const a = numVal(v1) * (p1 === 't' ? 1 : -1), b = numVal(v2) * (p2 === 't' ? 1 : -1);
+  const ok = isFinite(a) && isFinite(b) && Math.abs(a - b) < 1e-9 * (1 + Math.abs(a));
+  return (
+    <Card className="p-5">
+      <h4 className="font-bold mb-1">Paralel Gerilim Kaynakları</h4>
+      <p className="text-xs text-slate-500 mb-2">Paralel elemanların uçlarındaki gerilim aynıdır ⇒ paralel gerilim kaynakları <b>aynı polarite ve aynı büyüklükte</b> olmalıdır.</p>
+      <Ckt w={360} h={150}>
+        <VSrc a={[120, 125]} b={[120, 25]} plus={p1 === 't' ? 'b' : 'a'} label={'V_1 = ' + v1 + ' V'}/>
+        <VSrc a={[240, 125]} b={[240, 25]} plus={p2 === 't' ? 'b' : 'a'} label={'V_2 = ' + v2 + ' V'} lo={[22, 4, 'start']}/>
+        <Wire p="120,25 240,25"/><Wire p="120,125 240,125"/>
+        <MeshArrow cx={180} cy={75} label="KVL" r={22}/>
+      </Ckt>
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        <div className="flex gap-2"><input className={inputCls} value={v1} onChange={e => setV1(e.target.value)}/><Seg small value={p1} onChange={setP1} options={[{ v:'t', l:'+ üstte' }, { v:'b', l:'+ altta' }]}/></div>
+        <div className="flex gap-2"><input className={inputCls} value={v2} onChange={e => setV2(e.target.value)}/><Seg small value={p2} onChange={setP2} options={[{ v:'t', l:'+ üstte' }, { v:'b', l:'+ altta' }]}/></div>
+      </div>
+      <div className={cx('mt-3 rounded-lg px-3 py-2 text-sm font-medium', ok ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-rose-500/10 text-rose-700 dark:text-rose-300')}>
+        {ok ? '✅ Geçerli bağlantı: döngüde KVL sağlanıyor.' : <span>⛔ KVL ihlali! Döngüde <Tex m={r`V_1 - V_2 = ${fmt(a - b)} \neq 0`}/> → ideal kaynaklar arasında sonsuz akım (tanımsız).</span>}
+      </div>
+    </Card>
+  );
+}
+function KclDiagram({ rows, unk, x }){
+  const N = rows.length, C = [150, 105], R = 78;
+  return (
+    <svg viewBox="0 0 300 210" className="w-full max-w-[300px] mx-auto text-slate-700 dark:text-slate-200">
+      {rows.map((r, i) => {
+        const ang = -90 + i * 360 / N, rad = ang * Math.PI / 180;
+        const e = [C[0] + R * Math.cos(rad), C[1] + R * Math.sin(rad)];
+        const m1 = [C[0] + 34 * Math.cos(rad), C[1] + 34 * Math.sin(rad)], m2 = [C[0] + 58 * Math.cos(rad), C[1] + 58 * Math.sin(rad)];
+        const L = [C[0] + (R + 16) * Math.cos(rad), C[1] + (R + 16) * Math.sin(rad)];
+        let out = r.s > 0; if (i === unk && x !== null && x < 0) out = !out;
+        const col = i === unk ? '#f59e0b' : out ? '#10b981' : '#0ea5e9';
+        const val = i === unk ? (x === null || !isFinite(x) ? '?' : fmt(Math.abs(x), 4)) : r.v;
+        return <g key={i}>
+          <line x1={C[0]} y1={C[1]} x2={e[0]} y2={e[1]} {...SW}/>
+          <Arrow a={out ? m1 : m2} b={out ? m2 : m1} color={col}/>
+          <ST x={L[0]} y={L[1] + 4} t={r.n + ' = ' + val} a="middle" size={11} color={col} weight/>
+        </g>;
+      })}
+      <circle cx={C[0]} cy={C[1]} r={6} fill="currentColor"/>
+    </svg>
+  );
+}
+function SumZeroLab({ kind }){
+  const K = kind === 'kcl';
+  const init = K ? [{ n:'i_1', v:'5', s:-1 }, { n:'i_2', v:'2', s:1 }, { n:'i_3', v:'1.5', s:1 }, { n:'i_4', v:'', s:1, u:true }]
+                 : [{ n:'v_s', v:'12', s:-1 }, { n:'v_1', v:'4', s:1 }, { n:'v_2', v:'5', s:1 }, { n:'v_3', v:'', s:1, u:true }];
+  const [rows, setRows] = useState(init);
+  const unk = rows.findIndex(r => r.u);
+  const S = rows.reduce((acc, r, i) => i === unk ? acc : acc + r.s * numVal(r.v), 0);
+  const x = unk >= 0 ? -S / rows[unk].s : null;
+  const upd = (i, p) => setRows(rows.map((r, j) => j === i ? { ...r, ...p } : (p.u ? { ...r, u:false } : r)));
+  const symEq = rows.map((r, i) => (r.s > 0 ? (i ? ' + ' : '') : ' - ') + varTex(r.n)).join('') + ' = 0';
+  const numEq = rows.map((r, i) => { const t = i === unk ? varTex(r.n) : fmt(numVal(r.v)); return (r.s > 0 ? (i ? ' + ' : '') : ' - ') + (i !== unk && numVal(r.v) < 0 ? `(${t})` : t); }).join('') + ' = 0';
+  return (
+    <Card className="p-5">
+      <h3 className="font-bold mb-1">{K ? '🔵 KCL Laboratuvarı — düğüm' : '🟣 KVL Laboratuvarı — kapalı çevre'}</h3>
+      <p className="text-xs text-slate-500 mb-4">{K ? 'Düğümden ÇIKAN akımlar (+), GİREN akımlar (−). Bir dalı “bilinmeyen” seç; değeri otomatik bulunur.' : 'Çevreyi tek yönde dolaş: önce + uca giriyorsan (+v, gerilim düşümü), önce − uca giriyorsan (−v, yükselme).'}</p>
+      <div className={cx('grid gap-5', K && 'md:grid-cols-[300px_1fr]')}>
+        {K && <KclDiagram rows={rows} unk={unk} x={x}/>}
+        <div>
+          <div className="space-y-2">
+            {rows.map((r, i) => (
+              <div key={i} className="grid grid-cols-[70px_1fr_1.4fr_auto_auto] gap-2 items-center">
+                <input className={inputCls + ' font-mono'} value={r.n} onChange={e => upd(i, { n:e.target.value })}/>
+                <input className={inputCls} disabled={r.u} placeholder={r.u ? 'bilinmeyen' : 'değer'} value={r.u ? '' : r.v} onChange={e => upd(i, { v:e.target.value })}/>
+                <select className={inputCls} value={r.s} onChange={e => upd(i, { s:+e.target.value })}>
+                  <option value={1}>{K ? 'Çıkan (+)' : 'Önce + uç (+)'}</option><option value={-1}>{K ? 'Giren (−)' : 'Önce − uç (−)'}</option>
+                </select>
+                <label className="text-xs flex items-center gap-1 whitespace-nowrap"><input type="radio" checked={!!r.u} onChange={() => upd(i, { u:true })}/>?</label>
+                <button className="text-slate-400 hover:text-rose-500 px-1" onClick={() => rows.length > 2 && setRows(rows.filter((_, j) => j !== i))}>✕</button>
+              </div>
+            ))}
+          </div>
+          {rows.length < 8 && <button className={btnG + ' mt-2 text-xs'} onClick={() => setRows([...rows, { n:(K ? 'i_' : 'v_') + (rows.length + 1), v:'1', s:1 }])}>+ Dal ekle</button>}
+          <div className="mt-4 rounded-xl bg-slate-100 dark:bg-slate-800/60 px-4 py-3 space-y-1">
+            <Tex d m={symEq}/><Tex d m={numEq}/>
+            {unk >= 0 ? <Tex d m={r`\Rightarrow\ \boxed{${varTex(rows[unk].n)} = ${fmt(x, 6)}\ ${K ? r`\mathrm{A}` : r`\mathrm{V}`}}`}/>
+                      : <div className={cx('text-sm font-semibold', Math.abs(S) < 1e-9 ? 'text-emerald-600' : 'text-rose-500')}>Toplam = {fmt(S)} {Math.abs(S) < 1e-9 ? '✓ yasa sağlanıyor' : '✗ yasa sağlanmıyor'}</div>}
+            {unk >= 0 && x < 0 && <div className="text-xs text-amber-600 dark:text-amber-400">Negatif sonuç: seçtiğin referans yönü gerçek yönün tersi — sonuç yine doğrudur, yalnızca yön ters.</div>}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+const SHEET = [
+  { g:'Temel Bağıntılar', items:[
+    ['Akım', r`i = \frac{dq}{dt}`], ['Yük', r`q(t) = q(t_0) + \int_{t_0}^{t} i\,dx`], ['Gerilim', r`v = \frac{dw}{dq}`],
+    ['Güç', r`p = \frac{dw}{dt} = vi`], ['Enerji', r`\Delta w = \int_{t_1}^{t_2} p\,dt`], ['Ohm', r`v = iR,\ \ p = i^2R = \frac{v^2}{R}`] ] },
+  { g:'Bağlantılar', items:[
+    ['Seri', r`R_{eş} = \sum R_k`], ['Paralel', r`\frac{1}{R_{eş}} = \sum \frac{1}{R_k},\ \ R_1 \parallel R_2 = \frac{R_1R_2}{R_1+R_2}`],
+    ['Gerilim bölücü', r`v_k = v\,\frac{R_k}{\sum R}`], ['Akım bölücü', r`i_1 = i\,\frac{R_2}{R_1 + R_2}`] ] },
+  { g:'Yasalar & İşaret', items:[
+    ['KCL', r`\sum i_{çıkan} - \sum i_{giren} = 0`], ['KVL', r`\sum_{çevre} v_k = 0`], ['Tellegen', r`\sum_k p_k = 0 \iff \sum P_{üretilen} = \sum P_{harcanan}`],
+    ['Pasif işaret', r`i\ \text{+ uçtan giriyorsa } p = +vi`] ] },
+  { g:'Yöntemler', items:[
+    ['Düğüm denklemi sayısı', r`(n - 1) - N_{V}`], ['Çevre denklemi sayısı', r`m = b - n + 1,\ \ m - N_{I}`], ['Kaynak dönüşümü', r`V_s = I_s R \iff I_s = \frac{V_s}{R}`],
+    ['Thévenin', r`V_{th} = V_{oc},\ \ R_{th} = \frac{V_{oc}}{I_{sc}} = \frac{V_{ab}}{I_{ab}}`], ['Norton', r`I_N = \frac{V_{th}}{R_{th}},\ \ R_N = R_{th}`],
+    ['Maks. güç', r`R_o = R_{th},\ \ P_{max} = \frac{V_{th}^2}{4R_{th}}`], ['Süperpozisyon', r`x = x' + x'' + \dots\ \ (P \neq P' + P'')`] ] },
+];
+function Module1(){
+  const [sub, setSub] = useState('units');
+  return (
+    <div className="space-y-6 anim-in">
+      <SectionTitle icon="📚" title="Modül 1 · Akıllı Konu Notları ve Formül Kartları" sub="Temel bağıntılar, işaret kuralları ve Kirchhoff yasaları — etkileşimli araçlarla."/>
+      <Pills value={sub} onChange={setSub} items={[{ v:'units', l:'① Birimler & Temel Bağıntılar' }, { v:'sign', l:'② İşaret & Bağlantı Kuralları' }, { v:'kirchhoff', l:'③ Kirchhoff Yasaları' }, { v:'sheet', l:'🗒️ Formül Kopya Kağıdı' }]}/>
+      {sub === 'units' && <div className="space-y-6 anim-in">
+        <PrefixConverter/>
+        <Callout kind="tip" title="Sınav kısayolu: önekleri birlikte taşı">{r`$\mathrm{mA} \times \mathrm{k\Omega} = \mathrm{V}$ · $\mathrm{V} / \mathrm{k\Omega} = \mathrm{mA}$ · $\mathrm{mA} \times \mathrm{V} = \mathrm{mW}$ · $\mathrm{mW} \times \mathrm{ms} = \mu\mathrm{J}$. Bu eşleşmeler hesap makinesinde üs hatalarını önler.`}</Callout>
+        <div>
+          <h3 className="font-bold mb-3">Formül Kartları <span className="text-xs font-normal text-slate-500">(kartı çevirmek için tıkla)</span></h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{FORMULA_CARDS.map(c => <FlipCard key={c.t} card={c}/>)}</div>
+        </div>
+        <Card className="p-5 overflow-x-auto">
+          <h3 className="font-bold mb-3">Grafik Okuma Kuralları</h3>
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-slate-500 border-b border-slate-200 dark:border-slate-800"><th className="py-2 pr-3">Elindeki grafik</th><th className="py-2 pr-3">Eğim (türev) →</th><th className="py-2 pr-3">Alan (integral) →</th><th className="py-2">Dikkat</th></tr></thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              <tr><td className="py-2 pr-3"><Tex m="q(t)"/></td><td className="pr-3"><Tex m={r`i(t) = \frac{dq}{dt}`}/></td><td className="pr-3">—</td><td className="text-xs">Yatay bölge → akım sıfır.</td></tr>
+              <tr><td className="py-2 pr-3"><Tex m="i(t)"/></td><td className="pr-3">—</td><td className="pr-3"><Tex m={r`\Delta q = \int i\,dt`}/></td><td className="text-xs">Eksen altı alan negatif; <Tex m="q(t_0)"/> ekle.</td></tr>
+              <tr><td className="py-2 pr-3"><Tex m="w(t)"/></td><td className="pr-3"><Tex m={r`p(t) = \frac{dw}{dt}`}/></td><td className="pr-3">—</td><td className="text-xs">Azalan <Tex m="w"/> → eleman güç veriyor.</td></tr>
+              <tr><td className="py-2 pr-3"><Tex m="p(t)"/></td><td className="pr-3">—</td><td className="pr-3"><Tex m={r`\Delta w = \int p\,dt`}/></td><td className="text-xs">Toplam enerji = net alan.</td></tr>
+              <tr><td className="py-2 pr-3"><Tex m="v(t),\ i(t)"/></td><td className="pr-3" colSpan={2}><Tex m={r`p(t) = v(t)\,i(t)`}/> (her an için noktasal çarp, sonra alan al)</td><td className="text-xs">İki doğru çarpımı → parabol!</td></tr>
+            </tbody>
+          </table>
+        </Card>
+        <GraphLab/>
+      </div>}
+      {sub === 'sign' && <div className="space-y-6 anim-in">
+        <PassiveSignLab/>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card className="p-5">
+            <h3 className="font-bold mb-2">⚖️ Tellegen Teoremi</h3>
+            <Tex d m={r`\sum_{k=1}^{b} p_k = \sum_{k=1}^{b} v_k\, i_k = 0`}/>
+            <p className="text-sm mt-2 text-slate-600 dark:text-slate-300">Tüm elemanlarda <b>aynı (pasif) işaret kuralı</b> kullanılırsa, bir devredeki güçlerin cebirsel toplamı sıfırdır:</p>
+            <Tex d m={r`\sum P_{üretilen} = \sum P_{harcanan}`}/>
+            <p className="text-xs text-slate-500 mt-2">Her çözümün sonunda sağlama olarak kullan → <b>Modül 5</b>'teki tablo bunu otomatik yapar.</p>
+          </Card>
+          <Card className="p-5">
+            <h3 className="font-bold mb-2">📌 İşaret Özeti</h3>
+            <ul className="text-sm space-y-2">
+              <li><Rich t={r`Akım **+ uçtan giriyor** → $p = +vi$`}/></li>
+              <li><Rich t={r`Akım **+ uçtan çıkıyor** → $p = -vi$`}/></li>
+              <li><Rich t={r`$p > 0$ → güç **alır / harcar** (direnç daima)`}/></li>
+              <li><Rich t={r`$p < 0$ → güç **verir / üretir**`}/></li>
+              <li><Rich t={r`Değer negatif çıktıysa ($i = -2$ A) yönü çevirmeden işaretiyle kullan.`}/></li>
+            </ul>
+          </Card>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4"><SeriesISrcLab/><ParallelVSrcLab/></div>
+        <Callout kind="warn">{r`Seri bağlı **farklı** akım kaynakları ve paralel bağlı **farklı** gerilim kaynakları sınavda “hatalı devre” sorusu olarak gelir. Cevap: devre **tanımsızdır** (KCL/KVL ihlal edilir). Akım kaynağına seri direnç ya da gerilim kaynağına paralel direnç ise dış devreye etkisizdir.`}</Callout>
+      </div>}
+      {sub === 'kirchhoff' && <div className="space-y-6 anim-in">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card className="p-5">
+            <h3 className="font-bold mb-1">Kirchhoff'un Akımlar Aksiyomu (KCL)</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">Bir düğüme (veya kapalı yüzeye) giren ve çıkan akımların cebirsel toplamı sıfırdır — yük korunumu.</p>
+            <Tex d m={r`\sum_{k} i_k = 0 \qquad (\text{çıkan} = +,\ \text{giren} = -)`}/>
+            <Tex d m={r`-i_1 + i_2 + i_3 + i_4 = 0 \iff i_1 = i_2 + i_3 + i_4`}/>
+            <p className="text-xs text-slate-500 mt-2">Süperdüğüm (kapalı yüzey) için de geçerlidir.</p>
+          </Card>
+          <Card className="p-5">
+            <h3 className="font-bold mb-1">Kirchhoff'un Gerilimler Aksiyomu (KVL)</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">Herhangi bir kapalı çevre boyunca gerilimlerin cebirsel toplamı sıfırdır — enerji korunumu.</p>
+            <Tex d m={r`\sum_{\text{çevre}} v_k = 0 \qquad (\text{önce } + \text{ uç} = +v)`}/>
+            <Tex d m={r`-v_s + v_1 + v_2 + v_3 = 0 \iff v_s = v_1 + v_2 + v_3`}/>
+            <p className="text-xs text-slate-500 mt-2">İki düğüm arası gerilim, izlenen yoldan bağımsızdır.</p>
+          </Card>
+        </div>
+        <SumZeroLab kind="kcl"/>
+        <SumZeroLab kind="kvl"/>
+        <Callout kind="danger">{r`Bir denklemde işaret kuralını **değiştirme**. Aynı düğümde bir terimi “giren +”, diğerini “çıkan +” yazmak en sık KCL hatasıdır. Sonuç negatif çıkarsa yönü sonradan yorumla.`}</Callout>
+      </div>}
+      {sub === 'sheet' && <div className="space-y-4 anim-in">
+        <div className="flex justify-end no-print"><button className={btnG} onClick={() => window.print()}>🖨️ Yazdır / PDF</button></div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {SHEET.map(s => <Card key={s.g} className="p-5"><h3 className="font-bold mb-3 text-sky-600 dark:text-sky-400">{s.g}</h3>
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">{s.items.map(([k, f]) => <div key={k} className="py-2 grid grid-cols-[130px_1fr] items-center gap-2"><span className="text-xs font-semibold text-slate-500">{k}</span><Tex m={f}/></div>)}</div>
+          </Card>)}
+        </div>
+      </div>}
+    </div>
+  );
+}
+/* =====================================================================
+   6) MODÜL 2 — ADIM ADIM ANALİZ YÖNTEMİ REHBERİ
+   ===================================================================== */
+function SupermeshCircuit(){
+  return <Ckt w={400} h={190}>
+    <VSrc a={[60, 160]} b={[60, 40]} plus="b" label="10 V"/>
+    <Res a={[60, 40]} b={[200, 40]} label="2 Ω"/>
+    <ISrc a={[200, 160]} b={[200, 40]} to="b" label="3 A" lo={[22, 4, 'start']}/>
+    <Wire p="200,40 340,40"/><Res a={[340, 40]} b={[340, 160]} label="4 Ω"/><Wire p="60,160 340,160"/>
+    <Dot x={200} y={40}/><Dot x={200} y={160}/>
+    <MeshArrow cx={130} cy={100} label="I_1"/><MeshArrow cx={285} cy={100} label="I_2"/>
+    <rect x={44} y={24} width={312} height={152} rx={14} fill="none" stroke="#8b5cf6" strokeDasharray="6 4" strokeWidth={1.4}/>
+    <ST x={352} y={186} t="süperçevre (akım kaynağı kolu hariç)" a="end" size={10} color="#8b5cf6" weight/>
+  </Ckt>;
+}
+function SuperpositionTrio(){
+  return <div className="grid md:grid-cols-3 gap-2">
+    <NodeCircuit vs="12 V" r1="6 Ω" r2="3 Ω" is="3 A" node="a" title="Orijinal devre"/>
+    <NodeCircuit vs="12 V" r1="6 Ω" r2="3 Ω" is="3 A" node="a'" killI title="Yalnız 12 V aktif"/>
+    <NodeCircuit vs="12 V" r1="6 Ω" r2="3 Ω" is="3 A" node="a''" killV title="Yalnız 3 A aktif"/>
+  </div>;
+}
+function SourceTransformTool({ th }){
+  const [dir, setDir] = useState('v2i'); const [a, setA] = useState(th ? '9' : '12'); const [R, setR] = useState(th ? '4' : '6');
+  const A = numVal(a), Rv = numVal(R);
+  const res = dir === 'v2i' ? A / Rv : A * Rv;
+  const L = th ? { V:'V_th', I:'I_N', R:'R_th' } : { V:'V_s', I:'I_s', R:'R' };
+  const lt = th ? { V:'V_{th}', I:'I_N', R:'R_{th}' } : { V:'V_s', I:'I_s', R:'R' };
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <h4 className="font-bold">🧮 {th ? 'Thévenin ⇄ Norton Dönüştürücü' : 'Kaynak Dönüşümü Hesaplayıcı'}</h4>
+        <Seg small value={dir} onChange={setDir} options={[{ v:'v2i', l:th ? 'Thévenin → Norton' : 'Gerilim → Akım' }, { v:'i2v', l:th ? 'Norton → Thévenin' : 'Akım → Gerilim' }]}/>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Field label={dir === 'v2i' ? `${L.V} (V)` : `${L.I} (A)`}><input className={inputCls} value={a} onChange={e => setA(e.target.value)}/></Field>
+        <Field label={`${L.R} (Ω)`} hint="SI önekleri kullanılabilir: 2.2k, 470m …"><input className={inputCls} value={R} onChange={e => setR(e.target.value)}/></Field>
+      </div>
+      <SourceTransformPair V={`${L.V} = ${dir === 'v2i' ? a : fmt(res, 5)} V`} I={`${L.I} = ${dir === 'v2i' ? fmt(res, 5) : a} A`} R={`${R} Ω`}/>
+      <div className="rounded-xl bg-slate-100 dark:bg-slate-800/60 px-4 py-2">
+        {dir === 'v2i' ? <Tex d m={r`${lt.I} = \frac{${lt.V}}{${lt.R}} = \frac{${fmt(A)}}{${fmt(Rv)}} = \boxed{${fmt(res, 6)}\ \mathrm{A}}`}/>
+                       : <Tex d m={r`${lt.V} = ${lt.I}\,${lt.R} = (${fmt(A)})(${fmt(Rv)}) = \boxed{${fmt(res, 6)}\ \mathrm{V}}`}/>}
+      </div>
+      <p className="text-xs text-slate-500 mt-2">Akım kaynağının oku, gerilim kaynağının <b>+</b> ucunun bağlı olduğu terminale (a) doğrudur. Direnç değeri değişmez; yalnızca bağlantı şekli (seri ⇄ paralel) değişir.</p>
+    </Card>
+  );
+}
+function MaxPowerTool(){
+  const [vth, setVth] = useState('9'); const [rth, setRth] = useState('4'); const [k, setK] = useState(0.5);
+  const V = numVal(vth), Rt = numVal(rth);
+  const ok = isFinite(V) && isFinite(Rt) && Rt > 0;
+  const Rmax = 5 * (ok ? Rt : 1);
+  const Ro = k * Rmax;
+  const P = R => V * V * R / ((Rt + R) * (Rt + R));
+  const Pm = ok ? V * V / (4 * Rt) : 0;
+  const W = 560, H = 200, pad = { l:50, r:14, t:14, b:26 };
+  return (
+    <Card className="p-5">
+      <h4 className="font-bold mb-3">📊 Maksimum Güç Transferi — Canlı Eğri</h4>
+      <div className="grid md:grid-cols-[1fr_1.4fr] gap-5">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="V_th (V)"><input className={inputCls} value={vth} onChange={e => setVth(e.target.value)}/></Field>
+            <Field label="R_th (Ω)"><input className={inputCls} value={rth} onChange={e => setRth(e.target.value)}/></Field>
+          </div>
+          <Field label={`Yük direnci R_o = ${fmt(Ro, 4)} Ω`}><input type="range" className="w-full" min={0.002} max={1} step={0.002} value={k} onChange={e => setK(+e.target.value)}/></Field>
+          <TheveninEq vth={`${vth} V`} rth={`${rth} Ω`} ro={`R_o = ${fmt(Ro, 3)} Ω`}/>
+        </div>
+        <div>
+          {ok ? <>
+            <PlotFrame W={W} H={H} pad={pad} xr={[0, Rmax]} yr={[0, Pm * 1.15]} xl="R_o [Ω]" yl="P_o [W]">
+              {(sx, sy) => { const pts = Array.from({ length:200 }, (_, i) => { const R = Rmax * i / 199; return sx(R) + ',' + sy(P(R)); }).join(' ');
+                return <g><polyline points={pts} fill="none" stroke="#0ea5e9" strokeWidth={2.4}/>
+                  <line x1={sx(Rt)} x2={sx(Rt)} y1={sy(0)} y2={sy(Pm)} stroke="#10b981" strokeDasharray="4 3"/>
+                  <circle cx={sx(Rt)} cy={sy(Pm)} r={5} fill="#10b981"/><text x={sx(Rt) + 8} y={sy(Pm) - 6} fontSize={11} fill="#10b981" fontWeight={700}>P_max</text>
+                  <circle cx={sx(Ro)} cy={sy(P(Ro))} r={5} fill="#f59e0b"/></g>; }}
+            </PlotFrame>
+            <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+              <div className="rounded-lg bg-amber-500/10 px-3 py-2"><Tex m={r`P_o = \left(\frac{${fmt(V)}}{${fmt(Rt)} + ${fmt(Ro, 4)}}\right)^2 \cdot ${fmt(Ro, 4)} = ${fmt(P(Ro), 4)}\ \mathrm{W}`}/></div>
+              <div className="rounded-lg bg-emerald-500/10 px-3 py-2"><Tex m={r`P_{max} = \frac{${fmt(V)}^2}{4 \cdot ${fmt(Rt)}} = ${fmt(Pm, 5)}\ \mathrm{W}`}/></div>
+              <div className="rounded-lg bg-slate-100 dark:bg-slate-800/60 px-3 py-2">Verim <Tex m={r`\eta = \frac{R_o}{R_{th} + R_o} = ${fmt(100 * Ro / (Rt + Ro), 3)}\%`}/></div>
+              <div className="rounded-lg bg-slate-100 dark:bg-slate-800/60 px-3 py-2"><Tex m={r`P_o / P_{max} = ${fmt(100 * P(Ro) / Pm, 3)}\%`}/></div>
+            </div>
+          </> : <p className="text-rose-500 text-sm">Geçerli V_th ve pozitif R_th gir.</p>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+const METHODS = [
+  { id:'node', icon:'🔵', title:'Düğüm Gerilimleri', c:'from-sky-500 to-cyan-400',
+    when:r`Düğüm sayısı az, çevre sayısı fazla; **akım kaynakları** çok; paralel dallar baskın; çok sayıda düğüm gerilimi soruluyor.`,
+    steps:[
+      { g:'Temel algoritma', t:r`**Temel düğümleri belirle** (3+ elemanın birleştiği noktalar). $n$ düğüm varsa en fazla $n-1$ bilinmeyen düğüm gerilimi vardır.` },
+      { t:r`**Referans (toprak) düğümünü seç:** en çok elemanın / gerilim kaynağının bağlı olduğu düğüm (genelde alt düğüm). Diğerlerine $V_A, V_B, \dots$ ata.` },
+      { t:r`Referansa bağlı gerilim kaynağı varsa o düğüm doğrudan bilinir: $V_A = \pm V_s$ → bir denklem azalır.` },
+      { t:r`Her bilinmeyen düğüm için **KCL** yaz — o düğümden **çıkan** akımlar (+). Direnç akımı (kendi − komşu)/R; düğüme **giren** kaynak akımları sağ tarafa:`, eq:r`\sum_j \frac{V_k - V_j}{R_{kj}} = \sum I_{s,\text{giren}}` },
+      { t:r`**Bağımlı kaynak** varsa kontrol değişkenini ($i_x$, $v_x$) düğüm gerilimleri cinsinden yaz ve denkleme göm.` },
+      { t:r`**Paydaları eşitle** (EKOK ile her terimi — sağ taraf dahil — çarp), $A\mathbf{v} = \mathbf{b}$ formuna getir; yok etme / Cramer ile çöz.` },
+      { t:r`Dal akımlarını ve güçleri hesapla; **Tellegen** ile sağla: $\sum P = 0$.` },
+      { g:'Süperdüğüm durumu', t:r`İki **referans-dışı** düğüm arasında (bağımsız veya bağımlı) **gerilim kaynağı** varsa akımı bilinmez → iki düğüm + kaynak = **süperdüğüm**.` },
+      { t:r`Süperdüğümü tek bir düğüm gibi düşün; kaynak hariç **tüm dallar** için tek bir KCL yaz (kapalı yüzey KCL'i).` },
+      { t:r`**Kısıt denklemini** ekle (bağımlı kaynakta $V_+ - V_- = k\,v_x$):`, eq:r`V_{+} - V_{-} = V_s` },
+    ],
+    warns:[
+      r`Paydaları eşitlerken **sağ taraftaki sabitleri de** EKOK ile çarp: $\frac{V_A-180}{90} + \frac{V_A}{150} = 2 \xrightarrow{\times 450}$ sağ taraf $900$ olur, $2$ değil!`,
+      r`Aynı düğümün tüm terimlerinde tek yön kuralı: **çıkan** akım = $(V_{\text{kendi}} - V_{\text{komşu}})/R$. Bir terimi ters yazmak işareti bozar.`,
+      r`Akım kaynağına **seri** direnç düğüm denkleminde yer almaz — o dalın akımı zaten $I_s$'dir.`,
+    ],
+    examples:[
+      { title:'Tek düğümlü örnek', diagram:() => <NodeCircuit/>, q:r`Şekildeki devrede $V_A$ düğüm gerilimini bulunuz ve güç dengesini kontrol ediniz.`, items:[
+        { t:r`**Referans:** alt düğüm. Tek bilinmeyen: $V_A$.` },
+        { t:r`A düğümünden **çıkan** akımları yaz; 2 A kaynağı düğüme **giriyor** → sağ tarafa:` },
+        { eq:r`\underbrace{\frac{V_A - 180}{90}}_{90\,\Omega\ \text{kolu}} + \underbrace{\frac{V_A}{150}}_{150\,\Omega\ \text{kolu}} = \underbrace{2}_{I_s\ \text{giren}}` },
+        { t:r`EKOK$(90,\,150) = 450$ ile çarp — çarpım katsayıları terimlerin altında:` },
+        { eq:r`\underbrace{\frac{V_A - 180}{90}}_{\times 5} + \underbrace{\frac{V_A}{150}}_{\times 3} = \underbrace{2}_{\times 450}` },
+        { eq:r`5(V_A - 180) + 3V_A = 900 \;\Rightarrow\; 8V_A = 1800 \;\Rightarrow\; \boxed{V_A = 225\ \mathrm{V}}` },
+        { t:r`Dal akımları: $i_{90} = \frac{225 - 180}{90} = 0.5$ A (A'dan kaynağa doğru), $i_{150} = \frac{225}{150} = 1.5$ A.` },
+        { ok:r`**Tellegen:** $P_{90\Omega} = 22.5$ W, $P_{150\Omega} = 337.5$ W, $P_{180V} = +90$ W (akım + uçtan **giriyor** → güç alır), $P_{2A} = -450$ W (verir). $\sum P = 22.5 + 337.5 + 90 - 450 = 0$ ✓` },
+      ]},
+      { title:'Süperdüğüm örneği', diagram:() => <SupernodeCircuit/>, q:r`$V_1$ ve $V_2$ düğüm gerilimlerini bulunuz.`, items:[
+        { t:r`10 V kaynağı iki referans-dışı düğüm arasında → **süperdüğüm**. Kapalı yüzeyden **çıkan** akımlar = giren 6 A:` },
+        { eq:r`\underbrace{\frac{V_1}{2}}_{2\,\Omega} + \underbrace{\frac{V_2}{4}}_{4\,\Omega} = \underbrace{6}_{I_s} \qquad \text{kısıt: } V_2 - V_1 = 10` },
+        { eq:r`\xrightarrow{\times 4}\; 2V_1 + V_2 = 24 \;\Rightarrow\; 2V_1 + (V_1 + 10) = 24 \;\Rightarrow\; \boxed{V_1 = \tfrac{14}{3} \approx 4.667\ \mathrm{V}},\ \boxed{V_2 = \tfrac{44}{3} \approx 14.667\ \mathrm{V}}` },
+        { ok:r`**Tellegen:** $P_{2\Omega} = 10.889$ W, $P_{4\Omega} = 53.778$ W; 6 A kaynağı $-28$ W; 10 V kaynağında akım ($6 - 2.333 = 3.667$ A) + uçtan **çıkıyor** → $-36.667$ W. $\sum P = 64.667 - 64.667 = 0$ ✓` },
+      ]},
+    ],
+  },
+  { id:'mesh', icon:'🟣', title:'Çevre Akımları (Ç.A.Y)', c:'from-violet-500 to-fuchsia-400',
+    when:r`Devre **düzlemsel**; çevre sayısı düğüm sayısından az; **gerilim kaynakları** çok; seri elemanlar baskın.`,
+    steps:[
+      { g:'Temel algoritma', t:r`Devrenin düzlemsel olduğunu kontrol et. Bağımsız çevre sayısı: $m = b - n + 1$ ($b$: dal, $n$: düğüm sayısı).` },
+      { t:r`Her pencereye (göz) bir **çevre akımı** ata: $I_1, I_2, \dots$ — hepsini **saat yönünde** seçmek ortak dal terimlerini standartlaştırır.` },
+      { t:r`Her çevrede **KVL** yaz: gezinti yönünde direnç düşümü $R\,(I_{\text{kendi}} - I_{\text{komşu}})$; kaynağa önce **+** uçtan girersen $+V$, **−** uçtan girersen $-V$.`, eq:r`\sum R\,(I_k - I_j) + \sum (\pm V_s) = 0` },
+      { t:r`Bağımlı kaynağın kontrol değişkenini çevre akımları cinsinden yaz (ör. $i_x = I_1 - I_2$).` },
+      { t:r`Matris formu: köşegen = çevredeki **toplam** direnç, köşegen dışı = **−(ortak direnç)**. Cramer / yok etme ile çöz.`, eq:r`\begin{bmatrix} R_{11} & -R_{12} \\ -R_{21} & R_{22} \end{bmatrix}\begin{bmatrix} I_1 \\ I_2 \end{bmatrix} = \begin{bmatrix} \sum V_1 \\ \sum V_2 \end{bmatrix}` },
+      { t:r`Dal akımı = çevre akımlarının cebirsel toplamı. Güçleri hesapla, **Tellegen** ile sağla.` },
+      { g:'Kolunda akım kaynağı bulunan devreler', t:r`**(a) Dış kolda** (yalnız bir çevreye ait) akım kaynağı → o çevrenin akımı doğrudan bilinir: $I_k = \pm I_s$ (yön aynıysa +). O çevre için KVL **yazılmaz**.` },
+      { t:r`**(b) İki çevrenin ortak kolunda** akım kaynağı → **süperçevre**. Kısıt denklemi yaz (kaynak yönündeki akım pozitif):`, eq:r`I_a - I_b = I_s` },
+      { t:r`Süperçevre KVL'ini, akım kaynağının bulunduğu kolu **atlayan** dış çevre boyunca yaz. Akım kaynağının gerilimi bilinmediği için o kol KVL'e girmez.` },
+    ],
+    warns:[
+      r`Ortak koldaki direncin akımı $(I_1 - I_2)$'dir; yalnızca $I_1$ yazmak en sık yapılan hatadır.`,
+      r`Akım kaynağının uçlarındaki gerilim **bilinmez** — KVL'i akım kaynağından geçirerek yazacaksan bu gerilimi yeni bir bilinmeyen ($v_{I_s}$) olarak ekle ya da süperçevre kullan.`,
+      r`Kaynak işaretini gezinti yönünde **ilk karşılaşılan uca** göre belirle; kaynağın “güç veren” olduğu varsayımıyla işaret seçme.`,
+    ],
+    examples:[
+      { title:'İki çevreli örnek', diagram:() => <MeshCircuit/>, q:r`Çevre akımlarını ve 4 Ω'luk direncin akımını bulunuz.`, items:[
+        { eq:r`\text{Ç}_1:\ \underbrace{-10}_{\text{kaynak}} + \underbrace{2I_1}_{2\,\Omega} + \underbrace{4(I_1 - I_2)}_{\text{ortak } 4\,\Omega} = 0 \;\Rightarrow\; 6I_1 - 4I_2 = 10` },
+        { eq:r`\text{Ç}_2:\ \underbrace{4(I_2 - I_1)}_{\text{ortak } 4\,\Omega} + \underbrace{6I_2}_{6\,\Omega} + \underbrace{4}_{\text{kaynak}} = 0 \;\Rightarrow\; -4I_1 + 10I_2 = -4` },
+        { eq:r`\Delta = \begin{vmatrix} 6 & -4 \\ -4 & 10 \end{vmatrix} = 60 - 16 = 44` },
+        { eq:r`I_1 = \frac{\begin{vmatrix} 10 & -4 \\ -4 & 10 \end{vmatrix}}{44} = \frac{84}{44} = \boxed{\tfrac{21}{11} \approx 1.909\ \mathrm{A}} \qquad I_2 = \frac{\begin{vmatrix} 6 & 10 \\ -4 & -4 \end{vmatrix}}{44} = \frac{16}{44} = \boxed{\tfrac{4}{11} \approx 0.364\ \mathrm{A}}` },
+        { t:r`4 Ω (ortak kol) akımı: $I_1 - I_2 = \frac{17}{11} \approx 1.545$ A (aşağı yönde).` },
+        { ok:r`**Tellegen:** $P_{2\Omega} = 7.289$, $P_{4\Omega} = 9.554$, $P_{6\Omega} = 0.793$, $P_{4V} = +1.455$ W (akım + uçtan **giriyor**), $P_{10V} = -19.091$ W. $\sum P = 19.091 - 19.091 = 0$ ✓` },
+      ]},
+      { title:'Süperçevre örneği', diagram:() => <SupermeshCircuit/>, q:r`Ortak koldaki 3 A akım kaynağına dikkat ederek $I_1$, $I_2$'yi bulunuz.`, items:[
+        { t:r`3 A kaynağı ortak kolda, yukarı yönlü. Bu kolda $I_2$ yukarı, $I_1$ aşağı akar → **kısıt:**` },
+        { eq:r`I_2 - I_1 = 3` },
+        { t:r`Süperçevre KVL (akım kaynağı kolunu atlayan dış çevre, saat yönü):` },
+        { eq:r`\underbrace{-10}_{\text{kaynak}} + \underbrace{2I_1}_{2\,\Omega} + \underbrace{4I_2}_{4\,\Omega} = 0 \;\Rightarrow\; 2I_1 + 4(I_1 + 3) = 10` },
+        { eq:r`6I_1 = -2 \;\Rightarrow\; \boxed{I_1 = -\tfrac{1}{3}\ \mathrm{A}},\quad \boxed{I_2 = \tfrac{8}{3}\ \mathrm{A}}` },
+        { warn:r`$I_1$ negatif → 10 V kaynağında akım aslında + uçtan **giriyor**: kaynak güç **alıyor** ($+3.33$ W)!` },
+        { ok:r`**Tellegen:** akım kaynağı gerilimi $= 4 \cdot \tfrac{8}{3} = \tfrac{32}{3}$ V → $P_{3A} = -32$ W. $P_{2\Omega} = 0.222$, $P_{4\Omega} = 28.444$, $P_{10V} = +3.333$. $\sum P = 32 - 32 = 0$ ✓` },
+      ]},
+    ],
+  },
+  { id:'source', icon:'🔁', title:'Kaynak Dönüşümü', c:'from-amber-500 to-orange-400',
+    when:r`Seri dirençli gerilim kaynakları / paralel dirençli akım kaynakları **zincir** halinde; yalnızca **tek bir** dal büyüklüğü soruluyor.`,
+    steps:[
+      { t:r`Dönüştürülecek yapıyı bul: gerilim kaynağı **ile seri** direnç $R$ veya akım kaynağı **ile paralel** direnç $R$.` },
+      { t:r`**Gerilim → Akım:** $I_s = V_s / R$, aynı $R$ **paralel** bağlanır. Akım okunun yönü gerilim kaynağının **+ ucuna doğru**dur.`, eq:r`I_s = \frac{V_s}{R}` },
+      { t:r`**Akım → Gerilim:** $V_s = I_s R$, aynı $R$ **seri** bağlanır. + uç, akım okunun gösterdiği taraftadır.`, eq:r`V_s = I_s \cdot R` },
+      { t:r`Paralel akım kaynaklarını cebirsel topla, paralel dirençleri birleştir; seri gerilim kaynaklarını topla, seri dirençleri birleştir.` },
+      { t:r`Aranan elemana ulaşana kadar dönüşüm ↔ birleştirme döngüsünü tekrarla; son devrede bölücü / Ohm ile çöz.` },
+      { t:r`Bağımlı kaynaklar da dönüştürülebilir ($k\,i_x \to k\,i_x / R$) — **ancak** kontrol değişkeninin bulunduğu eleman dönüşüme **katılmamalı**.` },
+    ],
+    warns:[
+      r`Dönüşüm yalnızca **dış devre** için eşdeğerdir: dönüştürülen direncin kendi akımı/gücü orijinaldekiyle aynı **değildir**.`,
+      r`Kontrol değişkeni ($i_x$, $v_x$) bir direncin üzerindeyse o direnci dönüştürme — **değişken kaybolur!**`,
+      r`Gerilim kaynağına **paralel** direnç ve akım kaynağına **seri** direnç dış devreye etkisizdir; dönüşümden önce atılabilir (ama kaynağın gücünü etkiler).`,
+    ],
+    examples:[
+      { title:'Dönüşümle sadeleştirme', diagram:() => <SourceTransformPair V="12 V" I="2 A" R="6 Ω"/>, q:r`Süperpozisyon örneğindeki devrede (12 V – 6 Ω – 3 Ω – 3 A) $V_a$'yı kaynak dönüşümüyle bulunuz.`, items:[
+        { t:r`12 V + seri 6 Ω → $I = 12/6 = 2$ A akım kaynağı ∥ 6 Ω (ok $a$ düğümüne doğru).` },
+        { t:r`Şimdi $a$ düğümüne paralel bağlı: 2 A ve 3 A kaynakları (ikisi de düğüme doğru), 6 Ω ve 3 Ω dirençleri.` },
+        { eq:r`I_{top} = 2 + 3 = 5\ \mathrm{A},\qquad R_{eş} = 6 \parallel 3 = \frac{6 \cdot 3}{6 + 3} = 2\ \Omega` },
+        { eq:r`V_a = I_{top} \cdot R_{eş} = 5 \cdot 2 = \boxed{10\ \mathrm{V}}` },
+        { ok:r`**Sağlama:** Süperpozisyon sonucuyla ($4 + 6 = 10$ V) aynı ✓` },
+      ]},
+    ],
+    tool:() => <SourceTransformTool/>,
+  },
+  { id:'thevenin', icon:'🟢', title:'Thévenin & Norton', c:'from-emerald-500 to-teal-400',
+    when:r`Bir **yük** ($R_o$) farklı değerler alıyor, $a$–$b$ uçlarından **eşdeğer devre** isteniyor veya maksimum güç soruluyor.`,
+    steps:[
+      { g:'Durum A — Yalnızca bağımsız kaynak var', t:r`Yükü ($R_o$) devreden çıkar; $a$–$b$ uçlarını işaretle.` },
+      { t:r`$V_{th}$: $a$–$b$ **açık devre** iken uç gerilimini bul (düğüm / çevre / bölücü):`, eq:r`V_{th} = V_{oc} = V_a - V_b` },
+      { t:r`**Kaynakları öldür:** gerilim kaynağı → **kısa devre**, akım kaynağı → **açık devre**.` },
+      { t:r`$a$–$b$'den bakan seri-paralel eşdeğeri bul:`, eq:r`R_{th} = R_{ab}` },
+      { t:r`**Norton:** $I_N = V_{th} / R_{th}$ (ya da doğrudan $a$–$b$ kısa devre akımı $I_{sc}$), $R_N = R_{th}$.`, eq:r`I_N = \frac{V_{th}}{R_{th}} = I_{sc}` },
+      { g:'Durum B — Bağımlı kaynak var', t:r`$V_{th}$'yi yine **açık devre** geriliminden bul; bağımlı kaynak denklemde kalır (kontrol değişkenini bilinmeyenlere bağla).` },
+      { t:r`Bağımsız kaynakları öldür, **bağımlı kaynağa dokunma**.` },
+      { t:r`$a$–$b$ uçlarına dışarıdan **test kaynağı** bağla: $V_{ab}$ (ör. 1 V) gerilim kaynağı ya da $I_{ab}$ (ör. 1 A) akım kaynağı.` },
+      { t:r`Kontrol değişkenini test büyüklüğü cinsinden yaz; düğüm/çevre ile test kaynağının akımını (veya gerilimini) bul.` },
+      { t:r`Oranı al (alternatif: bağımsız kaynaklar açıkken $R_{th} = V_{oc} / I_{sc}$):`, eq:r`R_{th} = \frac{V_{ab}}{I_{ab}}` },
+      { t:r`$R_{th}$ **negatif** çıkabilir (bağımlı kaynak net güç veriyorsa) — bu bir hata değildir.` },
+    ],
+    warns:[
+      r`Bağımlı kaynaklı devrede $R_{th}$'yi seri-paralel indirgemeyle bulmaya çalışma — bağımlı kaynak **öldürülmez!**`,
+      r`Test kaynağında $I_{ab}$ yönü: test kaynağının + ucundan $a$ terminaline (devreye **giren**) alınmalı; ters alırsan $R_{th}$ işareti ters çıkar.`,
+      r`$V_{th} = V_a - V_b$ — sıra önemli; Thévenin kaynağının + ucu $a$ tarafındadır.`,
+    ],
+    examples:[
+      { title:'Durum A: bağımsız kaynak', diagram:() => <TheveninCircuitA/>, q:r`$a$–$b$ uçlarından görülen Thévenin ve Norton eşdeğerlerini bulunuz.`, items:[
+        { t:r`**1) $V_{th}$:** $a$–$b$ açıkken 1 Ω'dan akım geçmez → $V_{th}$ = 12 Ω üzerindeki gerilim (gerilim bölücü):` },
+        { eq:r`V_{th} = 12 \cdot \frac{12}{4 + 12} = \boxed{9\ \mathrm{V}}` },
+        { t:r`**2) Kaynağı öldür:** 12 V → kısa devre. $a$–$b$'den bakınca $(4 \parallel 12) + 1$:` },
+        { eq:r`R_{th} = \frac{4 \cdot 12}{4 + 12} + 1 = 3 + 1 = \boxed{4\ \Omega} \qquad I_N = \frac{9}{4} = \boxed{2.25\ \mathrm{A}}` },
+        { ok:r`**Sağlama ($I_{sc}$):** $a$–$b$ kısa → $R_{top} = 4 + (12 \parallel 1) = \frac{64}{13}$ Ω, $I = \frac{12 \cdot 13}{64} = 2.4375$ A, $I_{sc} = 2.4375 \cdot \frac{12}{13} = 2.25$ A ✓ → $R_{th} = 9 / 2.25 = 4$ Ω ✓` },
+      ]},
+      { title:'Durum B: bağımlı kaynak', diagram:() => <DepCircuit/>, q:r`Bağımlı kaynaklı devrenin $a$–$b$ Thévenin eşdeğerini bulunuz.`, items:[
+        { t:r`**1) Açık devre:** $i_x = \frac{10 - V_a}{2}$. $a$ düğümünde KCL (çıkan +):` },
+        { eq:r`\underbrace{-\,i_x}_{2\,\Omega\text{'dan giren}} \;\underbrace{-\,0.5\,i_x}_{\text{bağımlı kaynak}} + \underbrace{\frac{V_a}{4}}_{4\,\Omega} = 0 \;\Rightarrow\; 1.5 \cdot \frac{10 - V_a}{2} = \frac{V_a}{4}` },
+        { eq:r`\xrightarrow{\times 4}\; 3(10 - V_a) = V_a \;\Rightarrow\; \boxed{V_{th} = 7.5\ \mathrm{V}}` },
+        { t:r`**2) Test:** 10 V → kısa devre, bağımlı kaynak **kalır**. $a$–$b$'ye $V_{ab}$ test kaynağı: $i_x = \frac{0 - V_{ab}}{2} = -\frac{V_{ab}}{2}$` },
+        { eq:r`I_{ab} = \frac{V_{ab}}{4} - 1.5\,i_x = \frac{V_{ab}}{4} + \frac{3V_{ab}}{4} = V_{ab} \;\Rightarrow\; R_{th} = \frac{V_{ab}}{I_{ab}} = \boxed{1\ \Omega}` },
+        { ok:r`**Sağlama ($V_{oc}/I_{sc}$):** $a$–$b$ kısa → $V_a = 0$, $i_x = 5$ A, $I_{sc} = i_x + 0.5\,i_x = 7.5$ A → $R_{th} = 7.5 / 7.5 = 1$ Ω ✓` },
+      ]},
+    ],
+    tool:() => <SourceTransformTool th/>,
+  },
+  { id:'maxpower', icon:'⚡', title:'Maksimum Güç Transferi', c:'from-yellow-500 to-amber-400',
+    when:r`“$R_o$ ne olmalı ki üzerindeki güç **maksimum** olsun?” ve “bu maksimum güç kaçtır?” soruları.`,
+    steps:[
+      { t:r`Yük $R_o$ hariç devrenin **Thévenin eşdeğerini** bul ($V_{th}$, $R_{th}$). Bağımlı kaynak varsa test kaynağı yöntemi!` },
+      { t:r`Yük gücünü $R_o$'nun fonksiyonu olarak yaz:`, eq:r`P_o = i^2 R_o = \left(\frac{V_{th}}{R_{th} + R_o}\right)^2 R_o` },
+      { t:r`Türevini sıfıra eşitle:`, eq:r`\frac{dP_o}{dR_o} = 0 \;\Rightarrow\; R_o = R_{th}` },
+      { t:r`Maksimum güç:`, eq:r`P_{max} = \frac{V_{th}^2}{4R_{th}} = \frac{I_N^2\,R_{th}}{4}` },
+      { t:r`Bu durumda eşdeğer devrede verim $\%50$'dir: üretilen gücün yarısı $R_{th}$'de harcanır.` },
+    ],
+    warns:[
+      r`$R_o = R_{th}$ koşulu **$R_o$ değişken**, kaynak sabitken geçerlidir. $R_{th}$ ayarlanabiliyorsa en büyük güç $R_{th} = 0$'da alınır.`,
+      r`Bağımlı kaynaklı devrede $R_{th}$'yi test kaynağıyla bulmadan $R_o$ seçme.`,
+      r`$\%50$ verim yalnızca Thévenin **eşdeğeri** içindir; orijinal devredeki gerçek verim farklıdır.`,
+    ],
+    examples:[
+      { title:'Durum A devresi', diagram:() => <TheveninEq vth="9 V" rth="4 Ω" ro="R_o"/>, q:r`Thévenin örneğindeki devrede $R_o$ ne olmalı, $P_{max}$ kaçtır?`, items:[
+        { t:r`Thévenin örneğinden: $V_{th} = 9$ V, $R_{th} = 4$ Ω.` },
+        { eq:r`R_o = R_{th} = \boxed{4\ \Omega},\qquad P_{max} = \frac{9^2}{4 \cdot 4} = \frac{81}{16} = \boxed{5.0625\ \mathrm{W}}` },
+        { ok:r`**Sınır kontrolü:** $R_o \to 0$ ⇒ $P_o \to 0$ (kısa devre), $R_o \to \infty$ ⇒ $P_o \to 0$ (açık devre); arada tek maksimum ✓` },
+      ]},
+      { title:'Durum B devresi', diagram:() => <TheveninEq vth="7.5 V" rth="1 Ω" ro="R_o"/>, q:r`Bağımlı kaynaklı örnekte $R_o$ ve $P_{max}$?`, items:[
+        { eq:r`R_o = R_{th} = \boxed{1\ \Omega},\qquad P_{max} = \frac{7.5^2}{4 \cdot 1} = \boxed{14.0625\ \mathrm{W}}` },
+      ]},
+    ],
+    tool:() => <MaxPowerTool/>,
+  },
+  { id:'super', icon:'➕', title:'Süperpozisyon (Toplamsallık)', c:'from-rose-500 to-pink-400',
+    when:r`Az sayıda (2–3) bağımsız kaynak var; her kaynağın **katkısı** ayrı ayrı soruluyor; alt devreler basit seri-paralele iniyor.`,
+    steps:[
+      { t:r`$k$ tane **bağımsız** kaynak varsa $k$ tane alt devre çizeceksin.` },
+      { t:r`Her alt devrede **yalnız bir bağımsız kaynak** aktif; diğer gerilim kaynakları → kısa devre, akım kaynakları → açık devre.` },
+      { t:r`**Bağımlı kaynaklar her alt devrede kalır**; kontrol değişkeni o alt devrenin değişkenidir ($i_x'$, $i_x''$).` },
+      { t:r`Her alt devrede istenen büyüklüğü bul ($v'$, $v''$ …). Referans yönlerini orijinal devreyle **aynı** tut.` },
+      { t:r`Cebirsel olarak topla:`, eq:r`v = v' + v'' + \dots \qquad i = i' + i'' + \dots` },
+      { t:r`Güç doğrusal **değildir**: önce toplam akım/gerilimi bul, sonra $P = i^2R$ hesapla.` },
+    ],
+    warns:[
+      r`Bağımlı kaynağı öldürmek en klasik hatadır — bağımlı kaynak **her zaman** devrede kalır.`,
+      r`$P \neq P' + P''$: Güç süperpozisyonla toplanmaz!`,
+      r`Alt devrede yön ters çıktıysa yönü değiştirme; değeri **negatif** olarak topla.`,
+    ],
+    examples:[
+      { title:'İki kaynaklı örnek', diagram:() => <SuperpositionTrio/>, q:r`Süperpozisyon ile $V_a$'yı bulunuz; 3 Ω'daki gücü yorumlayınız.`, items:[
+        { t:r`**1) Yalnız 12 V** (3 A → açık devre): gerilim bölücü` },
+        { eq:r`V_a' = 12 \cdot \frac{3}{6 + 3} = 4\ \mathrm{V}` },
+        { t:r`**2) Yalnız 3 A** (12 V → kısa devre): $6 \parallel 3 = 2$ Ω` },
+        { eq:r`V_a'' = 3 \cdot 2 = 6\ \mathrm{V}` },
+        { eq:r`V_a = V_a' + V_a'' = 4 + 6 = \boxed{10\ \mathrm{V}}` },
+        { ok:r`**Sağlama (düğüm):** $\frac{10 - 12}{6} + \frac{10}{3} = -\frac{1}{3} + \frac{10}{3} = 3$ A ✓` },
+        { danger:r`Güç: $P_{3\Omega} = \frac{10^2}{3} = 33.33$ W, ama $\frac{4^2}{3} + \frac{6^2}{3} = 17.33$ W ≠ 33.33 W → güç toplanmaz!` },
+      ]},
+    ],
+  },
+];
+function StepList({ steps, shown }){
+  return (
+    <ol className="space-y-3">
+      {steps.slice(0, shown).map((s, i) => (
+        <React.Fragment key={i}>
+          {s.g && <li className="pt-2 text-xs font-bold uppercase tracking-widest text-sky-600 dark:text-sky-400">{s.g}</li>}
+          <li className="anim-in flex gap-3">
+            <span className="shrink-0 grid place-items-center h-7 w-7 rounded-full bg-sky-600 text-white text-xs font-bold shadow">{i + 1}</span>
+            <div className="flex-1 pt-0.5 text-sm leading-relaxed">
+              <Rich t={s.t}/>
+              {s.eq && <div className="mt-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 px-3 py-1"><Tex d m={s.eq}/></div>}
+            </div>
+          </li>
+        </React.Fragment>
+      ))}
+    </ol>
+  );
+}
+function ExampleItem({ it }){
+  if (it.eq) return <div className="rounded-lg bg-slate-100 dark:bg-slate-800/60 px-3 py-1"><Tex d m={it.eq}/></div>;
+  if (it.ok) return <div className="rounded-lg border-l-4 border-emerald-500 bg-emerald-500/10 px-3 py-2 text-sm"><Rich t={it.ok}/></div>;
+  if (it.warn) return <Callout kind="warn">{it.warn}</Callout>;
+  if (it.danger) return <Callout kind="danger">{it.danger}</Callout>;
+  return <p className="text-sm"><Rich t={it.t}/></p>;
+}
+function Module2({ method, setMethod }){
+  const M = METHODS.find(m => m.id === method) || METHODS[0];
+  const [shown, setShown] = useState(1);
+  const [ex, setEx] = useState(0);
+  const [sol, setSol] = useState(false);
+  useEffect(() => { setShown(1); setEx(0); setSol(false); }, [method]);
+  useEffect(() => setSol(false), [ex]);
+  const E = M.examples[ex] || M.examples[0];
+  return (
+    <div className="space-y-6 anim-in">
+      <SectionTitle icon="🧭" title="Modül 2 · Adım Adım Analiz Yöntemi Rehberi" sub="Bir yöntem kartına tıkla → çözüm şablonunu adım adım aç, çözümlü örnekle pekiştir."/>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {METHODS.map(m => (
+          <button key={m.id} onClick={() => setMethod(m.id)}
+            className={cx('relative overflow-hidden rounded-2xl border p-3 text-left transition hover:-translate-y-0.5',
+              m.id === method ? 'border-transparent text-white shadow-lg' : 'border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 hover:border-slate-400')}>
+            {m.id === method && <div className={cx('absolute inset-0 bg-gradient-to-br', m.c)}/>}
+            <div className="relative"><div className="text-2xl">{m.icon}</div><div className="text-sm font-bold leading-tight mt-1">{m.title}</div></div>
+          </button>
+        ))}
+      </div>
+      <div className="grid lg:grid-cols-[1.15fr_1fr] gap-6">
+        <Card className="p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={cx('h-10 w-10 rounded-xl grid place-items-center text-xl bg-gradient-to-br text-white', M.c)}>{M.icon}</div>
+            <div><h3 className="text-lg font-extrabold">{M.title}</h3><p className="text-xs text-slate-500">Çözüm şablonu · {M.steps.length} adım</p></div>
+          </div>
+          <Callout kind="info" title="Ne zaman kullanılır?">{M.when}</Callout>
+          <div className="mt-4"><StepList steps={M.steps} shown={shown}/></div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button className={btnP} disabled={shown >= M.steps.length} onClick={() => setShown(shown + 1)}>▶ Sonraki adım</button>
+            <button className={btnG} onClick={() => setShown(M.steps.length)}>Tümünü göster</button>
+            <button className={btnG} onClick={() => setShown(1)}>↺ Sıfırla</button>
+            <div className="ml-auto h-2 w-28 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div className="h-full bg-sky-500 transition-all" style={{ width:(100 * shown / M.steps.length) + '%' }}/></div>
+          </div>
+          <div className="mt-5 space-y-3">{M.warns.map((w, i) => <Callout key={i} kind={i === 0 ? 'danger' : 'warn'}>{w}</Callout>)}</div>
+        </Card>
+        <div className="space-y-6">
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 className="font-bold">📝 Çözümlü Örnek</h3>
+              {M.examples.length > 1 && <Seg small value={ex} onChange={setEx} options={M.examples.map((e, i) => ({ v:i, l:e.title }))}/>}
+            </div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-2 bg-slate-50/70 dark:bg-slate-950/40">{E.diagram()}</div>
+            <p className="text-sm mt-3 font-medium"><Rich t={E.q}/></p>
+            {!sol ? <button className={btnP + ' mt-3 w-full'} onClick={() => setSol(true)}>🔒 Önce kendin dene → Çözümü göster</button>
+                  : <div className="mt-3 space-y-2 anim-in">{E.items.map((it, i) => <ExampleItem key={i} it={it}/>)}</div>}
+          </Card>
+          {M.tool && M.tool()}
+        </div>
+      </div>
+    </div>
+  );
+}
+/* =====================================================================
+   7) MODÜL 3 — "HANGİ YÖNTEMİ SEÇMELİYİM?" KARAR AĞACI
+   ===================================================================== */
+const GOALS = [
+  { v:'maxpower', icon:'⚡', t:r`$R_o$ üzerinde **maksimum güç**`, d:'“R_o ne olmalı, P_max kaç?”' },
+  { v:'equiv',    icon:'🟢', t:r`$a$–$b$ uçlarından **eşdeğer devre**`, d:'Thévenin / Norton eşdeğeri' },
+  { v:'branch',   icon:'🎯', t:r`**Tek bir** dal akımı / gerilimi`, d:"ör. “4 Ω'daki akımı bulunuz”" },
+  { v:'all',      icon:'🔵', t:r`**Tüm** düğüm gerilimleri / dal akımları`, d:'güç dengesi, tüm güçler' },
+  { v:'each',     icon:'➕', t:r`Her kaynağın **ayrı katkısı**`, d:'“… kaynağının katkısını bulunuz”' },
+];
+function Stepper({ label, value, onChange, min=0, max=12, hint }){
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <div className="text-xs font-semibold text-slate-500 mb-2">{label}</div>
+      <div className="flex items-center gap-2">
+        <button className={btnG + ' !px-3'} onClick={() => onChange(Math.max(min, value - 1))}>−</button>
+        <div className="flex-1 text-center text-2xl font-extrabold tabular-nums">{value}</div>
+        <button className={btnG + ' !px-3'} onClick={() => onChange(Math.min(max, value + 1))}>+</button>
+      </div>
+      {hint && <div className="text-[11px] text-slate-400 mt-1">{hint}</div>}
+    </div>
+  );
+}
+function Toggle({ checked, onChange, children }){
+  return (
+    <label className={cx('flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition', checked ? 'border-sky-500 bg-sky-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-slate-400')}>
+      <input type="checkbox" className="mt-1 accent-sky-600 h-4 w-4" checked={checked} onChange={e => onChange(e.target.checked)}/>
+      <span className="text-sm">{children}</span>
+    </label>
+  );
+}
+const MNAME = { node:'Düğüm Gerilimleri', mesh:'Çevre Akımları (Ç.A.Y)', source:'Kaynak Dönüşümü', thevenin:'Thévenin / Norton', maxpower:'Thévenin + Maksimum Güç', super:'Süperpozisyon' };
+function recommend(a){
+  const dep = a.nDepV + a.nDepI > 0, nInd = a.nVs + a.nIs;
+  const Ne = Math.max(0, a.n - 1 - a.nVs - a.nDepV);
+  const Me = a.planar ? Math.max(0, a.m - a.nIs - a.nDepI) : null;
+  const best = Me === null || Ne <= Me ? 'node' : 'mesh';
+  const bestN = best === 'node' ? Ne : Me;
+  const C = [];
+  const push = (id, s, why, plan) => C.push({ id, score:Math.max(0, Math.min(100, Math.round(s))), why, plan });
+  const rthStep = dep ? r`Bağımlı kaynak var → bağımsız kaynakları öldür, **bağımlı kaynağa dokunma**, $a$–$b$'ye test kaynağı bağla: $R_{th} = V_{ab}/I_{ab}$.`
+                      : r`Bağımsız kaynakları öldür (V → kısa, I → açık), $R_{th} = R_{ab}$ seri-paralel eşdeğer.`;
+  const vthStep = r`$V_{th}$'yi açık devre geriliminden bul — **${MNAME[best]}** ile (${bestN} denklem)${a.transformable && !dep ? ' veya kaynak dönüşümüyle sadeleştirerek' : ''}.`;
+  // Düğüm
+  { const diff = (Me === null ? Ne + 3 : Me) - Ne;
+    const why = [r`Düğüm denklemi sayısı: $(${a.n} - 1) - ${a.nVs + a.nDepV} = ${Ne}$`];
+    if (a.nIs > a.nVs) why.push('Akım kaynakları KCL denklemine doğrudan girer.');
+    if (a.supernode) why.push('Süperdüğüm var → tek KCL + kısıt denklemi yazılacak.');
+    if (dep) why.push(r`Bağımlı kaynağın kontrol değişkenini düğüm gerilimleriyle ifade et.`);
+    push('node', 60 + 9 * diff + (a.nIs > a.nVs ? 5 : 0) - (a.supernode ? 3 : 0) + (a.goal === 'all' ? 12 : a.goal === 'branch' ? 2 : -18), why,
+      [r`Referans düğümü seç (en çok elemanlı düğüm).`, r`${Ne} bilinmeyen düğüm gerilimine KCL yaz (çıkan +).`, ...(a.supernode ? [r`Süperdüğüm: kaynak dışındaki dallar için tek KCL + $V_+ - V_- = V_s$.`] : []), r`Paydaları EKOK ile eşitle, sistemi çöz.`, r`Tellegen ile sağla: $\sum P = 0$.`]); }
+  // Çevre
+  if (Me === null) push('mesh', 5, ['Devre düzlemsel değil → Ç.A.Y doğrudan uygulanamaz.'], []);
+  else { const diff = Ne - Me;
+    const why = [r`Çevre denklemi sayısı: $${a.m} - ${a.nIs + a.nDepI} = ${Me}$`];
+    if (a.nVs > a.nIs) why.push('Gerilim kaynakları KVL denklemine doğrudan girer.');
+    if (a.supermesh) why.push('Ortak kolda akım kaynağı → süperçevre + kısıt denklemi.');
+    push('mesh', 60 + 9 * diff + (a.nVs > a.nIs ? 5 : 0) - (a.supermesh ? 3 : 0) + (a.goal === 'all' ? 12 : a.goal === 'branch' ? 2 : -18), why,
+      [r`Her göze saat yönünde çevre akımı ata.`, ...(a.nIs ? [r`Dış koldaki akım kaynakları → o çevre akımı doğrudan bilinir.`] : []), ...(a.supermesh ? [r`Süperçevre: $I_a - I_b = I_s$ + kaynağı atlayan dış çevrede KVL.`] : []), r`${Me} çevre için KVL yaz, ortak dallarda $(I_1 - I_2)$.`, r`Tellegen ile sağla.`]); }
+  // Kaynak dönüşümü
+  push('source', a.transformable ? 52 + (a.goal === 'branch' ? 22 : 0) + (a.goal === 'equiv' || a.goal === 'maxpower' ? 8 : 0) - (dep ? 18 : 0) - (a.goal === 'all' ? 25 : 0) : 12,
+    a.transformable ? ['Seri R’li gerilim / paralel R’li akım kaynakları var → zincirleme sadeleşme mümkün.', ...(dep ? ['Bağımlı kaynak var: kontrol değişkeninin bulunduğu elemanı dönüştürme!'] : [])] : ['Kaynaklarla seri/paralel direnç yapısı yok → dönüşüm uygulanamıyor.'],
+    [r`Gerilim kaynağı + seri $R$ ⇄ akım kaynağı ∥ $R$ dönüşümlerini uygula.`, r`Paralel akım kaynaklarını ve paralel dirençleri birleştir.`, r`Aranan dala kadar tekrarla; son adımda bölücü / Ohm.`]);
+  // Thévenin
+  const thS = a.goal === 'equiv' ? 96 : a.goal === 'maxpower' ? 88 : a.goal === 'branch' ? 48 + (a.varLoad ? 38 : 0) + (Ne + (Me ?? Ne) >= 4 ? 8 : 0) : a.goal === 'each' ? 12 : 18;
+  push('thevenin', thS, [a.goal === 'equiv' ? 'Soru doğrudan eşdeğer devre istiyor.' : a.varLoad ? 'Yük değişken → bir kez Thévenin bul, her yük için tek satırda çöz.' : 'Tek dal sorulduğunda devrenin geri kalanını eşdeğerle değiştirmek hızlı olabilir.', dep ? 'Bağımlı kaynak → R_th için test kaynağı yöntemi.' : 'Yalnız bağımsız kaynak → R_th kaynak öldürmeyle.'],
+    [r`Yükü çıkar, $a$–$b$ uçlarını belirle.`, vthStep, rthStep, r`Norton: $I_N = V_{th}/R_{th}$.`, r`Sağlama: $R_{th} = V_{oc}/I_{sc}$.`]);
+  // Maksimum güç
+  if (a.goal === 'maxpower') push('maxpower', 98, ['Soru R_o üzerindeki maksimum gücü istiyor → Thévenin eşdeğeri + R_o = R_th.'],
+    [r`Yükü ($R_o$) çıkar, $a$–$b$ uçlarını belirle.`, vthStep, rthStep, r`$R_o = R_{th}$ seç, $P_{max} = \dfrac{V_{th}^2}{4R_{th}}$.`, r`Sınır kontrolü: $R_o \to 0$ ve $R_o \to \infty$ için $P_o \to 0$.`]);
+  // Süperpozisyon
+  { let s, why = [];
+    if (nInd <= 1) { s = 3; why.push('Tek bağımsız kaynak var → süperpozisyon gereksiz.'); }
+    else {
+      s = a.goal === 'each' ? 95 : a.goal === 'branch' ? (nInd === 2 ? 62 : 48 - 6 * (nInd - 3)) : 22;
+      if (dep) { s -= 14; why.push('Bağımlı kaynak var → her alt devrede devrede kalacak (alt devreler sadeleşmeyebilir).'); }
+      why.unshift(`${nInd} bağımsız kaynak → ${nInd} alt devre çözülecek.`);
+    }
+    push('super', s, why, [r`Her seferinde yalnız bir bağımsız kaynağı aktif bırak (diğer V → kısa, I → açık).`, ...(dep ? [r`Bağımlı kaynakları **her** alt devrede tut.`] : []), r`Her alt devrede istenen büyüklüğü bul, cebirsel topla.`, r`Gücü en son, toplam akım/gerilimden hesapla.`]); }
+  C.sort((x, y) => y.score - x.score);
+  return { C, Ne, Me, dep, nInd };
+}
+function Module3({ goMethod }){
+  const init = { goal:null, n:3, m:2, planar:true, nVs:1, nIs:1, nDepV:0, nDepI:0, supernode:false, supermesh:false, transformable:false, varLoad:false };
+  const [a, setA] = useState(init);
+  const [step, setStep] = useState(0);
+  const set = p => setA({ ...a, ...p });
+  const STEPS = ['Soru ne istiyor?', 'Devre boyutu', 'Kaynak tipleri', 'Özel durumlar', 'Öneri'];
+  const R = step === 4 ? recommend(a) : null;
+  const canNext = step !== 0 || a.goal;
+  return (
+    <div className="space-y-6 anim-in">
+      <SectionTitle icon="🌳" title="Modül 3 · Hangi Yöntemi Seçmeliyim?" sub="Devreni 4 soruda tarif et → en az denklemle sonuca götüren yöntemi ve hızlı çözüm planını al."/>
+      <Card className="p-5">
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto">
+          {STEPS.map((s, i) => (
+            <React.Fragment key={s}>
+              <button onClick={() => (i < step || (i <= 4 && a.goal)) && setStep(i)} className={cx('flex items-center gap-2 shrink-0 text-sm', i === step ? 'font-bold text-sky-600 dark:text-sky-400' : i < step ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400')}>
+                <span className={cx('h-7 w-7 rounded-full grid place-items-center text-xs font-bold', i < step ? 'bg-emerald-500 text-white' : i === step ? 'bg-sky-600 text-white' : 'bg-slate-200 dark:bg-slate-800')}>{i < step ? '✓' : i + 1}</span>{s}
+              </button>
+              {i < STEPS.length - 1 && <div className={cx('h-0.5 w-6 sm:flex-1 shrink-0 rounded', i < step ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-800')}/>}
+            </React.Fragment>
+          ))}
+        </div>
+        <div key={step} className="anim-in">
+          {step === 0 && <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {GOALS.map(g => (
+              <button key={g.v} onClick={() => { set({ goal:g.v, varLoad: g.v === 'maxpower' ? true : a.varLoad }); setStep(1); }}
+                className={cx('rounded-2xl border p-4 text-left transition hover:-translate-y-0.5', a.goal === g.v ? 'border-sky-500 bg-sky-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-slate-400')}>
+                <div className="text-2xl mb-1">{g.icon}</div><div className="text-sm font-semibold"><Rich t={g.t}/></div><div className="text-xs text-slate-500 mt-1">{g.d}</div>
+              </button>
+            ))}
+          </div>}
+          {step === 1 && <div className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Stepper label="Temel düğüm sayısı (n) — referans dahil" value={a.n} onChange={v => set({ n:v })} min={2} hint="3 veya daha fazla elemanın birleştiği noktalar"/>
+              <Stepper label="Çevre (göz / pencere) sayısı (m)" value={a.m} onChange={v => set({ m:v })} min={1} hint="m = b − n + 1 (b: dal sayısı)"/>
+            </div>
+            <div className="flex items-center gap-3 text-sm"><span className="font-medium">Devre düzlemsel mi (kesişen tel yok)?</span><Seg small value={a.planar ? 'y' : 'n'} onChange={v => set({ planar:v === 'y' })} options={[{ v:'y', l:'Evet' }, { v:'n', l:'Hayır' }]}/></div>
+          </div>}
+          {step === 2 && <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Stepper label="Bağımsız gerilim kaynağı" value={a.nVs} onChange={v => set({ nVs:v })}/>
+            <Stepper label="Bağımsız akım kaynağı" value={a.nIs} onChange={v => set({ nIs:v })}/>
+            <Stepper label="Bağımlı gerilim kaynağı (VCVS/CCVS)" value={a.nDepV} onChange={v => set({ nDepV:v })}/>
+            <Stepper label="Bağımlı akım kaynağı (VCCS/CCCS)" value={a.nDepI} onChange={v => set({ nDepI:v })}/>
+          </div>}
+          {step === 3 && <div className="grid sm:grid-cols-2 gap-3">
+            <Toggle checked={a.supernode} onChange={v => set({ supernode:v })}>İki <b>referans-dışı</b> düğüm arasında gerilim kaynağı var <span className="text-slate-500">(süperdüğüm)</span></Toggle>
+            <Toggle checked={a.supermesh} onChange={v => set({ supermesh:v })}>İki çevrenin <b>ortak kolunda</b> akım kaynağı var <span className="text-slate-500">(süperçevre)</span></Toggle>
+            <Toggle checked={a.transformable} onChange={v => set({ transformable:v })}>Kaynakların <b>seri/paralel direnci</b> var <span className="text-slate-500">(kaynak dönüşümüne uygun)</span></Toggle>
+            <Toggle checked={a.varLoad} onChange={v => set({ varLoad:v })}>Yük direnci <Tex m="R_o"/> <b>değişken</b> / birden çok yük değeri soruluyor</Toggle>
+          </div>}
+          {step === 4 && R && <div className="space-y-5">
+            <div className="relative overflow-hidden rounded-2xl p-5 text-white">
+              <div className="absolute inset-0 bg-gradient-to-br from-sky-600 via-indigo-600 to-violet-600"/>
+              <div className="relative">
+                <div className="text-xs uppercase tracking-widest opacity-80">Önerilen en hızlı yöntem · uygunluk %{R.C[0].score}</div>
+                <div className="text-2xl font-extrabold mt-1">{MNAME[R.C[0].id]}</div>
+                <ul className="mt-3 space-y-1 text-sm">{R.C[0].why.map((w, i) => <li key={i}>• <Rich t={w}/></li>)}</ul>
+                <button className="mt-4 rounded-lg bg-white/15 hover:bg-white/25 px-3 py-2 text-sm font-semibold" onClick={() => goMethod(R.C[0].id)}>Modül 2'de adım adım aç →</button>
+              </div>
+            </div>
+            <div className="grid lg:grid-cols-2 gap-5">
+              <div>
+                <h4 className="font-bold mb-2">⚡ Hızlı çözüm planı</h4>
+                <ol className="space-y-2">{R.C[0].plan.map((p, i) => <li key={i} className="flex gap-3 text-sm"><span className="shrink-0 h-6 w-6 grid place-items-center rounded-full bg-sky-600 text-white text-xs font-bold">{i + 1}</span><Rich t={p}/></li>)}</ol>
+                <h4 className="font-bold mt-5 mb-2">🧮 Denklem sayısı karşılaştırması</h4>
+                {[['Düğüm gerilimleri', R.Ne, 'bg-sky-500'], ['Çevre akımları', R.Me, 'bg-violet-500']].map(([l, v, c]) => (
+                  <div key={l} className="mb-2"><div className="flex justify-between text-xs mb-1"><span>{l}</span><b>{v === null ? 'uygulanamaz' : v + ' denklem'}</b></div>
+                    <div className="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div className={cx('h-full rounded-full', c)} style={{ width: v === null ? '0%' : Math.min(100, 12 + 18 * v) + '%' }}/></div></div>
+                ))}
+                {R.dep && <p className="text-xs text-slate-500 mt-1">Bağımlı kaynak başına kontrol değişkeni için ek bir ifade (kısıt) yazılır.</p>}
+              </div>
+              <div>
+                <h4 className="font-bold mb-2">📋 Tüm yöntemlerin sıralaması</h4>
+                <div className="space-y-2">{R.C.map((c, i) => (
+                  <button key={c.id} onClick={() => goMethod(c.id)} className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-sky-500 transition">
+                    <div className="flex items-center justify-between text-sm"><span className="font-semibold">{i + 1}. {MNAME[c.id]}</span><span className="tabular-nums text-xs font-bold">%{c.score}</span></div>
+                    <div className="h-1.5 mt-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div className={cx('h-full rounded-full', i === 0 ? 'bg-emerald-500' : 'bg-slate-400')} style={{ width:c.score + '%' }}/></div>
+                    <div className="text-xs text-slate-500 mt-1"><Rich t={c.why[0] || ''}/></div>
+                  </button>
+                ))}</div>
+              </div>
+            </div>
+            {(a.supernode || a.supermesh || R.dep) && <div className="grid md:grid-cols-3 gap-3">
+              {a.supernode && <Callout kind="tip" title="Süperdüğüm">{r`Kaynağın iki ucundaki düğümleri birlikte çevrele; tek KCL + $V_+ - V_- = V_s$.`}</Callout>}
+              {a.supermesh && <Callout kind="tip" title="Süperçevre">{r`$I_a - I_b = I_s$ kısıtı + akım kaynağı kolunu atlayan dış çevrede KVL.`}</Callout>}
+              {R.dep && <Callout kind="warn">{r`Bağımlı kaynak: süperpozisyonda ve $R_{th}$ hesabında **öldürülmez**; kaynak dönüşümünde kontrol değişkenini kaybetme.`}</Callout>}
+            </div>}
+          </div>}
+        </div>
+        <div className="mt-6 flex justify-between">
+          <button className={btnG} disabled={step === 0} onClick={() => setStep(step - 1)}>← Geri</button>
+          {step < 4 ? <button className={btnP} disabled={!canNext} onClick={() => setStep(step + 1)}>{step === 3 ? 'Önerimi göster ✨' : 'İleri →'}</button>
+                    : <button className={btnG} onClick={() => { setA(init); setStep(0); }}>↺ Baştan başla</button>}
+        </div>
+      </Card>
+      <Card className="p-5">
+        <h3 className="font-bold mb-3">🗺️ Özet Karar Ağacı</h3>
+        <div className="grid md:grid-cols-5 gap-3 text-sm">
+          {[
+            ['⚡ Maks. güç', 'Thévenin → R_o = R_th → P_max = V_th²/4R_th'],
+            ['🟢 Eşdeğer devre', 'Bağımlı kaynak yok → kaynak öldür, R_ab · var → test kaynağı'],
+            ['🎯 Tek dal', 'Zincir yapı → kaynak dönüşümü · değişken yük → Thévenin · 2 kaynak → süperpozisyon'],
+            ['🔵 Hepsi', '(n−1) − N_V < m − N_I → düğüm · aksi halde çevre'],
+            ['➕ Katkılar', 'Süperpozisyon (bağımlı kaynak kalır, güç toplanmaz)'],
+          ].map(([h, b]) => <div key={h} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3"><div className="font-bold mb-1">{h}</div><div className="text-xs text-slate-600 dark:text-slate-400">{b}</div></div>)}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* =====================================================================
+   8) MODÜL 4 — PDF/GÖRSELDEN EKSİK NOT TAMAMLAYICI
+   ===================================================================== */
+const SYSTEM_PROMPT = `Sen kıdemli bir Elektrik-Elektronik Mühendisliği 'Devre Analizi I' eğitmenisin. Sana yükleyeceğim çalışma yapraklarını, devre şemalarını ve kendi çıkardığım el yazısı notları analiz ederek sınav odaklı, görsel olarak yapılandırılmış ders notları çıkaracaksın.
+
+Not çıkarırken şu kurallara kesinlikle uy:
+
+1. Kısa ve Pratik Anlatım: Uzun teorik paragraflar yerine doğrudan çözüm algoritmasını ('1. Adım: Bağımsız kaynakları öldür, 2. Adım: $a-b$ arasına test kaynağı ekle...' gibi) maddeler halinde yaz.
+
+2. Kritik Uyarı Kutuları: Öğrencilerin sınavda en çok hata yaptığı noktaları (örneğin; pasif işaretleme kuralında akımın girdiği kutup, kaynak dönüşümünde kontrol değişkeninin kaybolmaması, bağımlı kaynaklı Thévenin'de kaynağın kapatılmaması, düğüm gerilimlerinde payda eşitlerken yapılan işlem hataları) özel uyarı bloklarıyla vurgula.
+
+3. Adım Adım Denklem Kurulumu: KCL ve KVL denklemlerini yazarken her terimin hangi düğümden veya çevreden geldiğini açıkça göster (Örn: $\\frac{V_A - 180}{90} + \\frac{V_A}{150} = 2$) ve ortak payda katsayılarını altında belirt.
+
+4. Sağlama Adımı: Çözülen her sorunun sonuna Tellegen Teoremi ($\\sum P_{üretilen} = \\sum P_{harcanan}$) veya sınır durumu kontrolü ekle.`;
+const FORMAT_ADDENDUM = `
+
+ÇIKTI BİÇİMİ (uygulama içinde render edilecek):
+- Yanıtı Türkçe ve GitHub Markdown olarak ver. Başlık: "# 📘 Özet Kart — <konu>".
+- Bölümler: "## 1. Verilenler" (tablo), "## 2. Çözüm Algoritması", "## 3. Kritik Uyarılar", "## 4. Adım Adım Denklem Kurulumu", "## 5. Çözüm", "## 6. Sağlama", "## 7. Notunda Eksik Olan / Tamamlanan Adımlar".
+- Satır içi matematik için $...$, blok matematik için ayrı satırda $$...$$ kullan (KaTeX uyumlu).
+- Terim kaynaklarını \\underbrace{...}_{\\text{...}} ile, EKOK çarpanlarını \\underbrace{...}_{\\times k} ile göster.
+- Her kritik uyarıyı ayrı bir alıntı bloğu olarak yaz: "> ⚠️ **Kritik Uyarı:** ...".
+- Görselde/notta okunamayan veya eksik değer varsa uydurma; "(okunamadı — varsayım: ...)" diye belirt.`;
+const TOPICS = [
+  { id:'thevenin', name:'Thévenin / Norton Eşdeğeri', kw:['thevenin', 'thévenin', 'norton', 'eşdeğer', 'r_th', 'rth', 'v_th', 'vth', 'a-b', 'test kaynağı', 'i_sc', 'v_oc'] },
+  { id:'maxpower', name:'Maksimum Güç Transferi', kw:['maksimum güç', 'maximum power', 'max güç', 'pmax', 'p_max', 'r_o', 'yük direnci'] },
+  { id:'node', name:'Düğüm Gerilimleri Yöntemi', kw:['düğüm', 'node', 'kcl', 'süperdüğüm', 'supernode', 'v_a', 'v_b', 'referans'] },
+  { id:'mesh', name:'Çevre Akımları Yöntemi (Ç.A.Y)', kw:['çevre akım', 'mesh', 'kvl', 'göz', 'süperçevre', 'supermesh', 'ç.a.y', 'saat yönü', 'i1', 'i_1'] },
+  { id:'source', name:'Kaynak Dönüşümü', kw:['kaynak dönüşüm', 'dönüştür', 'source transformation'] },
+  { id:'super', name:'Süperpozisyon (Toplamsallık)', kw:['süperpozisyon', 'superposition', 'toplamsallık', 'katkı'] },
+  { id:'tellegen', name:'Tellegen / Pasif İşaretleme', kw:['tellegen', 'güç dengesi', 'pasif işaret', 'güç ver', 'güç al', 'harcanan', 'üretilen'] },
+  { id:'basics', name:'Temel Bağıntılar (q, i, v, p, w)', kw:['dq/dt', 'q(t)', 'i(t)', 'p(t)', 'w(t)', 'coulomb', 'joule', 'enerji', 'yük '] },
+];
+const CHECKS = {
+  node: [
+    { l:'Referans düğüm seçimi', re:/referans|toprak|ground|gnd/i, fix:r`Alt (en çok elemanın bağlı olduğu) düğüm referans seçilir: $V_{ref} = 0$.` },
+    { l:'KCL yön kuralı (çıkan +)', re:/çıkan|giren|kcl/i, fix:r`Her düğümde çıkan akımlar (+): $\sum \frac{V_k - V_j}{R} = \sum I_{giren}$.` },
+    { l:'Süperdüğüm kontrolü', re:/süperdüğüm|supernode/i, fix:'Referans-dışı iki düğüm arasında gerilim kaynağı varsa süperdüğüm + kısıt denklemi yazılır; yoksa adım atlanır.' },
+    { l:'Payda eşitleme (EKOK)', re:/ekok|payda|ortak payda/i, fix:'Tüm terimler — sağ taraf dahil — EKOK ile çarpıldı (bkz. Bölüm 4).' } ],
+  mesh: [
+    { l:'Çevre akımı yönleri', re:/saat|yön|clockwise/i, fix:'Tüm çevre akımları saat yönünde alınır.' },
+    { l:'Ortak dal terimi', re:/I_?\d\s*-\s*I_?\d|ortak/i, fix:r`Ortak dal düşümü $R\,(I_{kendi} - I_{komşu})$ yazılır.` },
+    { l:'Akım kaynağı / süperçevre kontrolü', re:/akım kaynağı|süperçevre|supermesh/i, fix:'Dış kolda akım kaynağı → o çevre akımı bilinir; ortak kolda → süperçevre + kısıt.' } ],
+  thevenin: [
+    { l:'V_th (açık devre gerilimi)', re:/v_?th|v_?oc|açık devre/i, fix:r`$a$–$b$ açık devreyken $V_{th} = V_a - V_b$ hesaplanır.` },
+    { l:'R_th yöntemi', re:/r_?th|öldür|test/i, fix:'@RTH' },
+    { l:'Norton dönüşümü', re:/norton|i_?n\b|i_?sc/i, fix:r`$I_N = V_{th}/R_{th}$, $R_N = R_{th}$.` } ],
+  maxpower: [
+    { l:'R_o = R_th koşulu', re:/r_?o\s*=\s*r_?th|r_?th\s*=\s*r_?o|eşit/i, fix:r`$dP_o/dR_o = 0 \Rightarrow R_o = R_{th}$.` },
+    { l:'P_max formülü', re:/p_?max|4\s*\*?\s*r/i, fix:r`$P_{max} = V_{th}^2 / (4R_{th})$.` } ],
+  super: [
+    { l:'Kaynak öldürme kuralı', re:/kısa devre|açık devre|öldür/i, fix:'Aktif olmayan V kaynakları kısa, I kaynakları açık devre yapılır.' },
+    { l:'Bağımlı kaynak devrede kalır', re:/bağımlı/i, fix:'Bağımlı kaynaklar her alt devrede korunur.' },
+    { l:'Güç uyarısı', re:/güç/i, fix:r`Güç toplanmaz: $P \neq P' + P''$; toplam akımdan hesaplanır.` } ],
+  source: [
+    { l:'Ok yönü / polarite', re:/yön|polarite|\+ uç/i, fix:'Akım kaynağının oku, gerilim kaynağının + ucuna doğrudur.' },
+    { l:'Kontrol değişkeninin korunması', re:/kontrol|i_x|v_x/i, fix:'Kontrol değişkeninin üzerinde olduğu eleman dönüştürülmez.' } ],
+  tellegen: [ { l:'Pasif işaret kuralı', re:/pasif|giriyor|çıkıyor/i, fix:r`Akım + uçtan giriyorsa $p = +vi$, çıkıyorsa $p = -vi$.` } ],
+  basics: [
+    { l:'Birim / önek dönüşümü', re:/m[AVW]\b|k[ΩΩ]|µ|10\^/i, fix:r`Önekleri $10^n$ olarak yaz; mA·kΩ = V.` },
+    { l:'Başlangıç değeri', re:/q\(0\)|t_?0|başlangıç/i, fix:r`$q(t) = q(t_0) + \int_{t_0}^{t} i\,dx$ — başlangıç değeri eklenir.` } ],
+};
+const COMMON_CHECK = { l:'Sağlama (Tellegen / sınır durumu)', re:/tellegen|sağlama|toplam güç|∑\s*p|kontrol/i, fix:r`Çözüm sonunda $\sum P_{üretilen} = \sum P_{harcanan}$ kontrolü yapılır (Modül 5 tablosu).` };
+const LIMITS = {
+  thevenin: r`$R_o \to \infty$ ⇒ $V_{ab} \to V_{th}$; $R_o \to 0$ ⇒ $I_{ab} \to I_N$. Ayrıca $R_{th} = V_{oc}/I_{sc}$ ile çapraz kontrol.`,
+  maxpower: r`$R_o \to 0$ ve $R_o \to \infty$ için $P_o \to 0$; arada tek tepe $R_o = R_{th}$'de.`,
+  node: r`Bulunan düğüm gerilimlerini her KCL denklemine geri koy; tüm güçlerin toplamı sıfır olmalı.`,
+  mesh: r`Her KVL denkleminde çevre toplamı sıfır olmalı; ortak dal akımının yönünü yorumla.`,
+  super: r`Toplam sonucu düğüm/çevre yöntemiyle tek denklemde doğrula.`,
+  source: r`Sadeleştirilmiş devrenin sonucu orijinal devrenin düğüm denklemini sağlamalı.`,
+  tellegen: r`Direnç güçleri asla negatif olmamalı; negatifse yön/polarite hatası var.`,
+  basics: r`Birimleri kontrol et: $\mathrm{A \cdot s = C}$, $\mathrm{V \cdot A = W}$, $\mathrm{W \cdot s = J}$.`,
+};
+function detectTopics(text){
+  const low = text.toLowerCase();
+  const sc = TOPICS.map(t => ({ ...t, s: t.kw.reduce((a, k) => a + (low.includes(k) ? 1 : 0), 0) })).filter(t => t.s > 0).sort((a, b) => b.s - a.s);
+  const dep = /bağımlı|dependent|\bi_?x\b|\bv_?x\b|vcvs|ccvs|vccs|cccs/i.test(text);
+  return { list: sc, dep };
+}
+function methodSteps(id, dep){
+  const M = METHODS.find(m => m.id === id); if (!M) return [];
+  const groups = []; M.steps.forEach(s => { if (s.g || !groups.length) groups.push({ g:s.g || '', steps:[] }); groups[groups.length - 1].steps.push(s); });
+  let use = groups;
+  if (id === 'thevenin') use = groups.filter((g, i) => dep ? i === 1 : i === 0);
+  return use;
+}
+function equationsMarkdown(an){
+  let md = '';
+  an.eqs.forEach((e, i) => {
+    md += `\n### Denklem ${i + 1}${e.label ? ' — ' + e.label : ''}\n\n`;
+    md += `- Yazılan form:\n\n$$${e.tex}$$\n\n`;
+    if (e.substTex) md += `- Verilenler yerine konunca:\n\n$$${e.substTex}$$\n\n`;
+    if (e.braceTex) md += `- Ortak payda: **EKOK = ${e.lcm}** (çarpım katsayıları terimlerin altında):\n\n$$${e.braceTex}$$\n\n$$${e.expTex}$$\n\n`;
+    if (e.simpTex) md += `- Düzenlenmiş (doğrusal) form:\n\n$$${e.simpTex}$$\n\n`;
+    if (e.nonlinear) md += `- ℹ️ Doğrusal olmayan denklem — sayısal (Newton) çözüm uygulanır.\n\n`;
+  });
+  return md;
+}
+function solutionMarkdown(an){
+  let md = '';
+  if (an.log.length) md += an.log.map(l => `- ${l}`).join('\n') + '\n\n';
+  const keys = Object.keys(an.solution);
+  if (keys.length) md += '$$' + keys.map(k => r`\boxed{${varTex(k)} = ${fmt(an.solution[k])}${unitOf(k)}}`).join(r`\qquad `) + '$$\n\n';
+  if (an.missing.length) md += `> ⚠️ **Eksik denklem:** ${an.missing.map(u => '$' + varTex(u) + '$').join(', ')} için yeterli bağımsız denklem yok. Eksik KCL/KVL ya da kısıt (süperdüğüm/süperçevre, bağımlı kaynak) denklemini ekle.\n\n`;
+  if (an.singular) md += `> ⚠️ **Tekil sistem:** Denklemler birbirine bağımlı (biri diğerlerinin kombinasyonu). Farklı bir düğüm/çevre için denklem yaz.\n\n`;
+  return md;
+}
+function buildLocalCard(text, title){
+  const an = analyzeEquations(text);
+  const { list, dep } = detectTopics(text);
+  const primary = list[0] || { id:null, name:'Genel Devre Analizi' };
+  const K = { ...an.knowns, ...an.solution };
+  const now = new Date().toLocaleString('tr-TR');
+  let md = `# 📘 Özet Kart — ${title || primary.name}\n\n`;
+  md += `**Konu:** ${list.length ? list.slice(0, 3).map(t => t.name).join(' · ') : 'Genel (KCL / KVL)'}  \n**Bağımlı kaynak:** ${dep ? 'Var ⚠️' : 'Yok'}  \n**Oluşturma:** ${now} · *yerel akıllı motor*\n\n`;
+  // 1. Verilenler
+  md += `## 1. Verilenler\n\n`;
+  if (an.givens.length) {
+    md += `| Sembol | Değer | Tür |\n|---|---|---|\n`;
+    an.givens.forEach(g => { md += `| ${g.name ? '$' + varTex(g.name) + '$' : '—'} | $${g.unit ? unitTex(g.value, g.unit) : fmt(g.value)}$ | ${g.kind || ''} |\n`; });
+    md += '\n';
+  } else md += `*Metinde birimli değer bulunamadı (ör. \`R1 = 90 Ω\`, \`Vs = 180 V\`).*\n\n`;
+  // 2. Algoritma
+  md += `## 2. Çözüm Algoritması — ${primary.name}\n\n`;
+  const ids = list.length ? list.slice(0, 2).map(t => t.id).filter(id => METHODS.some(m => m.id === id)) : [];
+  if (ids.length) {
+    ids.forEach((id, k) => {
+      if (k > 0) md += `\n**Ek olarak — ${MNAME[id]}:**\n\n`;
+      methodSteps(id, dep).slice(0, k > 0 ? 1 : 9).forEach(g => {
+        if (g.g) md += `\n**${g.g}**\n\n`;
+        g.steps.forEach((s, i) => { md += `${i + 1}. ${s.t.replace(/\n/g, ' ')}${s.eq ? '\n\n   $$' + s.eq + '$$\n' : ''}\n`; });
+      });
+    });
+  } else {
+    md += `1. Bilinmeyenleri belirle ve referans yönlerini işaretle.\n2. Düğümlerde KCL (çıkan +), çevrelerde KVL (önce + uç = +v) yaz.\n3. Eleman bağıntılarını (Ohm, kaynak tanımları) ekle ve sistemi çöz.\n4. Pasif işaretleme ile güçleri hesapla, $\\sum P = 0$ kontrol et.\n`;
+  }
+  md += '\n';
+  // 3. Uyarılar
+  md += `## 3. Kritik Uyarılar\n\n`;
+  const warns = [];
+  ids.forEach(id => (METHODS.find(m => m.id === id)?.warns || []).slice(0, 2).forEach(w => warns.push(w)));
+  if (an.eqs.some(e => e.lcm)) warns.push(r`**Payda eşitleme:** EKOK ile çarparken sağ taraftaki sabit terimi de çarp; işaretleri parantez açarken dağıt.`);
+  if (dep) warns.push(r`**Bağımlı kaynak:** Thévenin/süperpozisyonda bağımlı kaynak **kapatılmaz**; kaynak dönüşümünde kontrol değişkeni kaybolmamalı.`);
+  warns.push(r`**Pasif işaretleme:** güç işaretini akımın **girdiği kutba** göre belirle — kaynak da güç alabilir.`);
+  [...new Set(warns)].slice(0, 6).forEach(w => { md += `> ⚠️ **Kritik Uyarı:** ${w}\n\n`; });
+  // 4. Denklemler
+  md += `## 4. Adım Adım Denklem Kurulumu\n`;
+  if (an.eqs.length) md += equationsMarkdown(an);
+  else md += `\n*Metinde çözülebilir denklem bulunamadı.* Denklemleri ayrı satırlara \`KCL A: (V_A - Vs)/R1 + V_A/R2 = Is\` biçiminde yazarsan terim kaynakları, EKOK katsayıları ve çözüm otomatik eklenir.\n\n`;
+  // 5. Çözüm
+  md += `## 5. Çözüm\n\n`;
+  md += an.eqs.length ? solutionMarkdown(an) : '*Denklem girilmedi.*\n\n';
+  const find = re => Object.keys(K).find(k => re.test(k));
+  const kv = find(/^V_?th$/i), kr = find(/^R_?th$/i);
+  if (kv && kr && isFinite(K[kv]) && isFinite(K[kr]) && K[kr] !== 0) {
+    md += `**Türetilen büyüklükler:**\n\n$$I_N = \\frac{V_{th}}{R_{th}} = \\frac{${fmt(K[kv])}}{${fmt(K[kr])}} = ${fmt(K[kv] / K[kr])}\\ \\mathrm{A} \\qquad P_{max} = \\frac{V_{th}^2}{4R_{th}} = ${fmt(K[kv] * K[kv] / (4 * K[kr]))}\\ \\mathrm{W}\\ (R_o = ${fmt(K[kr])}\\ \\Omega)$$\n\n`;
+  }
+  // 6. Sağlama
+  md += `## 6. Sağlama\n\n`;
+  if (an.checks.length) md += `**Denklemlere geri koyma:**\n\n` + an.checks.map(c => `- ${c}`).join('\n') + '\n\n';
+  md += `- **Tellegen:** Tüm elemanların $V$ ve $I$ değerlerini pasif işaretlemeyle yaz; $\\sum P_{üretilen} = \\sum P_{harcanan}$ olmalı → *Modül 5 tablosu*.\n`;
+  md += `- **Sınır durumu:** ${LIMITS[primary.id] || LIMITS.node}\n\n`;
+  // 7. Eksik adımlar
+  md += `## 7. Notunda Eksik Olan / Tamamlanan Adımlar\n\n| Adım | Notunda | Durum |\n|---|---|---|\n`;
+  const checks = [...(list.length ? list.slice(0, 2).flatMap(t => CHECKS[t.id] || []) : []), COMMON_CHECK];
+  checks.forEach(c => {
+    const has = c.re.test(text);
+    const fix = c.fix === '@RTH' ? (dep ? r`Bağımlı kaynak var → bağımsızları öldür, test kaynağı ekle: $R_{th} = V_{ab}/I_{ab}$.` : r`Kaynakları öldür (V → kısa, I → açık): $R_{th} = R_{ab}$.`) : c.fix;
+    md += `| ${c.l} | ${has ? '✅ Var' : '—'} | ${has ? 'Tamam' : '🧩 **Eklendi:** ' + fix} |\n`;
+  });
+  if (an.eqs.length && an.missing.length) md += `| Denklem sayısı | ${an.eqs.length} denklem | 🧩 **Eksik:** ${an.missing.length} bilinmeyen için ek denklem gerekli |\n`;
+  md += '\n---\n*Bu kart yerel kural tabanlı motorla üretildi. Görsel/PDF okumak veya serbest metni yorumlatmak için “Gemini AI” modunu kullan.*\n';
+  return md;
+}
+async function callGemini({ key, model, text, files }){
+  const parts = [{ text: text || 'Ekteki çalışma yaprağını/notları analiz et ve özet karta dönüştür.' }];
+  files.forEach(f => parts.push({ inline_data:{ mime_type:f.type, data:f.b64 } }));
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ system_instruction:{ parts:[{ text: SYSTEM_PROMPT + FORMAT_ADDENDUM }] }, contents:[{ role:'user', parts }], generationConfig:{ temperature:0.3 } }) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
+  const out = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts || []).map(p => p.text || '').join('');
+  if (!out) throw new Error('Model boş yanıt döndürdü.');
+  return out;
+}
+const SAMPLES = [
+  { l:'Düğüm gerilimleri', t:`Soru 3 (çalışma yaprağı): Şekildeki devrede A düğümünün gerilimini düğüm gerilimleri yöntemiyle bulunuz.
+Vs = 180 V, R1 = 90 Ω, R2 = 150 Ω, Is = 2 A
+Notum: alt düğümü aldım, 2 A düğüme giriyor.
+KCL A: (V_A - Vs)/R1 + V_A/R2 = Is` },
+  { l:'Bağımlı kaynaklı Thévenin', t:`Hocanın çalışma yaprağı, soru 7: bağımlı kaynaklı Thevenin
+Vs = 10 V, R1 = 2 Ω, R2 = 4 Ω, bağımlı akım kaynağı 0.5 i_x (a düğümüne giriyor)
+a-b uçlarından Thevenin eşdeğerini bul, sonra maksimum güç.
+Açık devre: i_x = (10 - V_a)/2
+KCL a: -i_x - 0.5*i_x + V_a/4 = 0
+V_th = V_a
+Test: V_ab = 1
+i_t = (0 - V_ab)/2
+I_ab = V_ab/4 - 1.5*i_t
+R_th = V_ab/I_ab` },
+  { l:'Çevre akımları', t:`Çevre akımları sorusu: 10 V kaynak, 2 Ω, ortak kol 4 Ω, 6 Ω ve 4 V kaynak.
+I1 ve I2'yi saat yönünde aldım.
+Ç1: -10 + 2*I1 + 4*(I1 - I2) = 0
+Ç2: 4*(I2 - I1) + 6*I2 + 4 = 0` },
+];
+function fileToB64(f){ return new Promise((res, rej) => { const r2 = new FileReader(); r2.onload = () => res(String(r2.result).split(',')[1]); r2.onerror = rej; r2.readAsDataURL(f); }); }
+function Module4(){
+  const [mode, setMode] = useLocal('da1_m4mode', 'local');
+  const [text, setText] = useLocal('da1_m4text', SAMPLES[0].t);
+  const [title, setTitle] = useState('');
+  const [key, setKey] = useLocal('da1_gkey', '');
+  const [model, setModel] = useLocal('da1_gmodel', 'gemini-2.5-flash');
+  const [files, setFiles] = useState([]);
+  const [out, setOut] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [edit, setEdit] = useState(false);
+  const [cards, setCards] = useLocal('da1_cards', []);
+  const outRef = useRef(null);
+  const run = async () => {
+    setErr(''); setEdit(false);
+    if (mode === 'local') {
+      if (!text.trim()) { setErr('Önce not / soru metnini yapıştır.'); return; }
+      try { setOut(buildLocalCard(text, title.trim())); } catch (e) { setErr('Motor hatası: ' + e.message); }
+    } else {
+      if (!key.trim()) { setErr('Gemini API anahtarını gir (aistudio.google.com → Get API key). Anahtar yalnızca bu tarayıcıda saklanır.'); return; }
+      if (!text.trim() && !files.length) { setErr('Metin yapıştır veya görsel/PDF ekle.'); return; }
+      setBusy(true);
+      try { setOut(await callGemini({ key:key.trim(), model:model.trim() || 'gemini-2.5-flash', text:(title ? 'Kart başlığı: ' + title + '\n\n' : '') + text, files })); }
+      catch (e) { setErr('Gemini hatası: ' + e.message); }
+      setBusy(false);
+    }
+    setTimeout(() => outRef.current && outRef.current.scrollIntoView({ behavior:'smooth', block:'start' }), 80);
+  };
+  const addFiles = async list => {
+    const arr = [];
+    for (const f of list) { if (f.size > 15 * 1024 * 1024) { setErr(f.name + ': 15 MB sınırını aşıyor.'); continue; } arr.push({ name:f.name, type:f.type || 'application/octet-stream', b64: await fileToB64(f), url: f.type.startsWith('image/') ? URL.createObjectURL(f) : null }); }
+    setFiles(fs => [...fs, ...arr]);
+  };
+  const save = () => {
+    const t = (out.match(/^#\s+(.+)$/m) || [, 'Özet Kart'])[1].replace(/^📘\s*Özet Kart\s*—\s*/, '');
+    setCards([{ id:Date.now(), title:t, md:out, date:new Date().toLocaleString('tr-TR') }, ...cards].slice(0, 40));
+  };
+  return (
+    <div className="space-y-6 anim-in">
+      <SectionTitle icon="📝" title="Modül 4 · PDF / Görselden Eksik Not Tamamlayıcı" sub="El yazısı notunu veya çalışma yaprağı sorusunu yapıştır → eksik adımları tamamlanmış, sınav odaklı özet karta dönüştür."/>
+      <div className="grid lg:grid-cols-[1fr_1.25fr] gap-6 items-start">
+        <Card className="p-5 space-y-4 lg:sticky lg:top-24">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Seg value={mode} onChange={setMode} options={[{ v:'local', l:'⚙️ Yerel motor' }, { v:'ai', l:'✨ Gemini AI' }]}/>
+            <div className="flex gap-1">{SAMPLES.map(s => <button key={s.l} className="text-[11px] px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setText(s.t)}>{s.l}</button>)}</div>
+          </div>
+          <Field label="Kart başlığı (isteğe bağlı)"><input className={inputCls} value={title} onChange={e => setTitle(e.target.value)} placeholder="ör. Vize Soru 3 — Düğüm Gerilimleri"/></Field>
+          <Field label="Not / soru metni" hint="Verilenleri “R1 = 90 Ω” biçiminde, denklemleri ayrı satırlarda yaz (ör. KCL A: (V_A-180)/90 + V_A/150 = 2). SI önekleri: 2.2k, 5m …">
+            <textarea className={inputCls + ' font-mono text-[13px] leading-relaxed'} rows={12} value={text} onChange={e => setText(e.target.value)} placeholder="Notlarını buraya yapıştır…"/>
+          </Field>
+          {mode === 'ai' && <div className="space-y-3 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
+            <div onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); addFiles([...e.dataTransfer.files]); }}
+              className="rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 p-4 text-center text-sm">
+              <div>📎 Görsel / PDF sürükle-bırak ya da</div>
+              <label className="inline-block mt-2 cursor-pointer text-sky-600 dark:text-sky-400 font-semibold">dosya seç<input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={e => { addFiles([...e.target.files]); e.target.value = ''; }}/></label>
+            </div>
+            {files.length > 0 && <div className="flex flex-wrap gap-2">{files.map((f, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1 text-xs">
+                {f.url ? <img src={f.url} className="h-8 w-8 object-cover rounded"/> : <span>📄</span>}<span className="max-w-[140px] truncate">{f.name}</span>
+                <button className="text-slate-400 hover:text-rose-500" onClick={() => setFiles(files.filter((_, j) => j !== i))}>✕</button>
+              </div>))}</div>}
+            <div className="grid grid-cols-[1.4fr_1fr] gap-2">
+              <Field label="Gemini API anahtarı"><input type="password" className={inputCls} value={key} onChange={e => setKey(e.target.value)} placeholder="AIza…"/></Field>
+              <Field label="Model"><input className={inputCls} value={model} onChange={e => setModel(e.target.value)}/></Field>
+            </div>
+            <p className="text-[11px] text-slate-500">Anahtar yalnızca tarayıcının localStorage'ında tutulur ve doğrudan Google API'ye gönderilir.</p>
+          </div>}
+          {mode === 'local' && <p className="text-[11px] text-slate-500">Yerel motor çevrimdışı çalışır: konuyu algılar, verilenleri tabloya döker, denklemleri kurup (terim kaynakları + EKOK katsayıları) çözer, sağlamayı ve notundaki eksik adımları ekler. Görsel/PDF için Gemini modunu kullan.</p>}
+          <button className={btnP + ' w-full py-3 text-base'} disabled={busy} onClick={run}>{busy ? '⏳ Analiz ediliyor…' : '✨ Eksik adımları tamamla ve özet karta dönüştür'}</button>
+          {err && <div className="rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-300 text-sm px-3 py-2">{err}</div>}
+          <details className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 group">
+            <summary className="cursor-pointer text-sm font-semibold">🤖 “Otomatik Ders Notu Çıkarıcı” sistem promptu</summary>
+            <pre className="mt-3 whitespace-pre-wrap text-xs leading-relaxed bg-slate-100 dark:bg-slate-950 rounded-lg p-3 max-h-72 overflow-auto">{SYSTEM_PROMPT}</pre>
+            <div className="flex flex-wrap gap-2 mt-2"><CopyBtn text={SYSTEM_PROMPT} label="Promptu kopyala"/><CopyBtn text={SYSTEM_PROMPT + FORMAT_ADDENDUM} label="Biçim ekiyle kopyala"/></div>
+            <p className="text-[11px] text-slate-500 mt-2">Bu prompt Gemini modunda otomatik kullanılır; ChatGPT / Gemini / Claude gibi bir sohbete de yapıştırabilirsin.</p>
+          </details>
+        </Card>
+        <div ref={outRef} className="space-y-4 scroll-mt-24">
+          {out ? <Card className="p-6 anim-in">
+            <div className="flex flex-wrap gap-2 justify-end mb-3 no-print">
+              <button className={btnG} onClick={() => setEdit(!edit)}>{edit ? '👁️ Önizleme' : '✏️ Düzenle'}</button>
+              <CopyBtn text={out} label="Markdown"/>
+              <button className={btnG} onClick={() => window.print()}>🖨️ Yazdır</button>
+              <button className={btnP} onClick={save}>💾 Kartlarıma kaydet</button>
+            </div>
+            {edit ? <textarea className={inputCls + ' font-mono text-xs'} rows={28} value={out} onChange={e => setOut(e.target.value)}/> : <Md src={out}/>}
+          </Card>
+          : <Card className="p-10 text-center text-slate-500">
+              <div className="text-5xl mb-3">🗂️</div>
+              <div className="font-semibold text-slate-700 dark:text-slate-200">Özet kartın burada görünecek</div>
+              <p className="text-sm mt-1">Soldaki örneklerden birini seçip butona bas — verilenler, algoritma, kritik uyarılar, adım adım denklem kurulumu, çözüm ve sağlama tek kartta.</p>
+            </Card>}
+          {cards.length > 0 && <Card className="p-5">
+            <div className="flex items-center justify-between mb-3"><h3 className="font-bold">📚 Kartlarım ({cards.length})</h3><button className="text-xs text-slate-500 hover:text-rose-500" onClick={() => confirm('Tüm kayıtlı kartlar silinsin mi?') && setCards([])}>Tümünü sil</button></div>
+            <div className="grid sm:grid-cols-2 gap-2">{cards.map(c => (
+              <div key={c.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 flex items-start gap-2">
+                <button className="flex-1 text-left" onClick={() => { setOut(c.md); setEdit(false); outRef.current && outRef.current.scrollIntoView({ behavior:'smooth' }); }}>
+                  <div className="text-sm font-semibold line-clamp-2">{c.title}</div><div className="text-[11px] text-slate-500">{c.date}</div>
+                </button>
+                <button className="text-slate-400 hover:text-rose-500" onClick={() => setCards(cards.filter(x => x.id !== c.id))}>✕</button>
+              </div>))}</div>
+          </Card>}
+        </div>
+      </div>
+    </div>
+  );
+}
+/* =====================================================================
+   9) MODÜL 5 — TELLEGEN GÜÇ SAĞLAMASI VE HIZLI HESAPLAYICI
+   ===================================================================== */
+const ETYPES = ['Direnç', 'Gerilim kaynağı', 'Akım kaynağı', 'Bağımlı kaynak', 'Diğer'];
+const TPRESETS = {
+  node: { l:'Düğüm örneği (Modül 2)', rows:[
+    { name:'Vs (180 V)', type:'Gerilim kaynağı', v:'180', i:'0.5', ref:'in' },
+    { name:'R1 (90 Ω)', type:'Direnç', v:'45', i:'0.5', ref:'in' },
+    { name:'R2 (150 Ω)', type:'Direnç', v:'225', i:'1.5', ref:'in' },
+    { name:'Is (2 A)', type:'Akım kaynağı', v:'225', i:'2', ref:'out' } ] },
+  super: { l:'Süperpozisyon örneği', rows:[
+    { name:'Vs (12 V)', type:'Gerilim kaynağı', v:'12', i:'1/3', ref:'out' },
+    { name:'R1 (6 Ω)', type:'Direnç', v:'2', i:'1/3', ref:'in' },
+    { name:'R2 (3 Ω)', type:'Direnç', v:'10', i:'10/3', ref:'in' },
+    { name:'Is (3 A)', type:'Akım kaynağı', v:'10', i:'3', ref:'out' } ] },
+  mesh: { l:'Süperçevre örneği', rows:[
+    { name:'Vs (10 V)', type:'Gerilim kaynağı', v:'10', i:'1/3', ref:'in' },
+    { name:'R (2 Ω)', type:'Direnç', v:'2/3', i:'1/3', ref:'in' },
+    { name:'R (4 Ω)', type:'Direnç', v:'32/3', i:'8/3', ref:'in' },
+    { name:'Is (3 A)', type:'Akım kaynağı', v:'32/3', i:'3', ref:'out' } ] },
+  wrong: { l:'Hatalı işaretli örnek', rows:[
+    { name:'Vs (180 V)', type:'Gerilim kaynağı', v:'180', i:'0.5', ref:'out' },
+    { name:'R1 (90 Ω)', type:'Direnç', v:'45', i:'0.5', ref:'in' },
+    { name:'R2 (150 Ω)', type:'Direnç', v:'225', i:'1.5', ref:'in' },
+    { name:'Is (2 A)', type:'Akım kaynağı', v:'225', i:'2', ref:'out' } ] },
+};
+function TellegenTable(){
+  const [rows, setRows] = useLocal('da1_tellegen', TPRESETS.node.rows);
+  const upd = (i, p) => setRows(rows.map((r, j) => j === i ? { ...r, ...p } : r));
+  const calc = rows.map(r => { const V = numVal(r.v), I = numVal(r.i); const P = r.ref === 'in' ? V * I : -V * I; return { V, I, P, ok:isFinite(P) }; });
+  const valid = calc.filter(c => c.ok);
+  const abs = valid.filter(c => c.P > 0).reduce((s, c) => s + c.P, 0);
+  const del = valid.filter(c => c.P < 0).reduce((s, c) => s - c.P, 0);
+  const sum = abs - del;
+  const tol = Math.max(1e-9, 1e-3 * Math.max(abs, del));
+  const balanced = valid.length > 0 && Math.abs(sum) <= tol;
+  const maxP = Math.max(1e-12, ...valid.map(c => Math.abs(c.P)));
+  const badR = rows.map((r, i) => r.type === 'Direnç' && calc[i].ok && calc[i].P < -1e-12);
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+        <h3 className="font-bold text-lg">⚖️ Tellegen Güç Sağlaması</h3>
+        <div className="flex flex-wrap gap-1">{Object.entries(TPRESETS).map(([k, p]) => <button key={k} className="text-[11px] px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setRows(p.rows)}>{p.l}</button>)}
+          <button className="text-[11px] px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setRows([{ name:'E1', type:'Direnç', v:'', i:'', ref:'in' }])}>Boş tablo</button></div>
+      </div>
+      <p className="text-xs text-slate-500 mb-4">Her eleman için gerilimi (+ uç referansıyla) ve akımı gir; akımın <b>+ uçtan girip girmediğini</b> seç. Değerler negatif, kesirli (<code className="ic">1/3</code>) veya SI önekli (<code className="ic">2.5m</code>) olabilir.</p>
+      <div className="overflow-x-auto -mx-1">
+        <table className="w-full text-sm min-w-[760px]">
+          <thead><tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200 dark:border-slate-800">
+            <th className="py-2 px-1">Eleman</th><th className="px-1">Tür</th><th className="px-1">V (V)</th><th className="px-1">I (A)</th><th className="px-1">Akım referansı</th><th className="px-1 text-right">P (W)</th><th className="px-1">Durum</th><th></th></tr></thead>
+          <tbody>
+            {rows.map((r, i) => { const c = calc[i]; return (
+              <tr key={i} className={cx('border-b border-slate-100 dark:border-slate-800/70', badR[i] && 'bg-rose-500/10')}>
+                <td className="py-1.5 px-1"><input className={inputCls + ' !py-1.5'} value={r.name} onChange={e => upd(i, { name:e.target.value })}/></td>
+                <td className="px-1"><select className={inputCls + ' !py-1.5'} value={r.type} onChange={e => upd(i, { type:e.target.value })}>{ETYPES.map(t => <option key={t}>{t}</option>)}</select></td>
+                <td className="px-1 w-24"><input className={inputCls + ' !py-1.5 font-mono'} value={r.v} onChange={e => upd(i, { v:e.target.value })}/></td>
+                <td className="px-1 w-24"><input className={inputCls + ' !py-1.5 font-mono'} value={r.i} onChange={e => upd(i, { i:e.target.value })}/></td>
+                <td className="px-1"><Seg small value={r.ref} onChange={v => upd(i, { ref:v })} options={[{ v:'in', l:'+ uçtan girer' }, { v:'out', l:'+ uçtan çıkar' }]}/></td>
+                <td className="px-1 text-right font-mono font-semibold tabular-nums">{c.ok ? fmt(c.P, 6) : '—'}</td>
+                <td className="px-1 text-xs whitespace-nowrap">{!c.ok ? <span className="text-slate-400">değer gir</span> : c.P > 1e-12 ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold">▼ harcıyor</span> : c.P < -1e-12 ? <span className="text-amber-600 dark:text-amber-400 font-semibold">▲ üretiyor</span> : <span className="text-slate-400">0</span>}</td>
+                <td className="px-1"><button className="text-slate-400 hover:text-rose-500 px-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>✕</button></td>
+              </tr>); })}
+          </tbody>
+        </table>
+      </div>
+      <button className={btnG + ' mt-3 text-xs'} onClick={() => setRows([...rows, { name:'E' + (rows.length + 1), type:'Direnç', v:'', i:'', ref:'in' }])}>+ Eleman ekle</button>
+      <div className="grid sm:grid-cols-4 gap-3 mt-5">
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3"><div className="text-xs text-slate-500">Σ Harcanan</div><div className="text-xl font-extrabold tabular-nums">{fmt(abs, 6)} W</div></div>
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3"><div className="text-xs text-slate-500">Σ Üretilen</div><div className="text-xl font-extrabold tabular-nums">{fmt(del, 6)} W</div></div>
+        <div className="rounded-xl bg-slate-100 dark:bg-slate-800/60 p-3"><div className="text-xs text-slate-500">Σ P (cebirsel)</div><div className="text-xl font-extrabold tabular-nums">{fmt(sum, 6)} W</div></div>
+        <div className={cx('rounded-xl p-3 border', balanced ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-rose-500 text-white border-rose-500')}>
+          <div className="text-xs opacity-90">Tellegen</div><div className="text-lg font-extrabold">{balanced ? '✅ ΣP = 0 sağlandı' : '❌ ΣP ≠ 0'}</div></div>
+      </div>
+      <div className="mt-4 rounded-xl bg-slate-100 dark:bg-slate-800/60 px-4 py-2">
+        <Tex d m={valid.length ? r`\sum P = ` + calc.map((c, i) => !c.ok ? '' : (i && c.P >= 0 ? ' + ' : c.P < 0 ? ' - ' : '') + fmt(Math.abs(c.P), 5)).join('') + r` = ${fmt(sum, 6)}\ \mathrm{W}` : r`\sum P = 0`}/>
+      </div>
+      <div className="mt-4 space-y-1.5">
+        {rows.map((r, i) => calc[i].ok && (
+          <div key={i} className="grid grid-cols-[120px_1fr] items-center gap-2 text-xs">
+            <span className="truncate text-slate-500">{r.name}</span>
+            <div className="relative h-4 rounded bg-slate-100 dark:bg-slate-800">
+              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-slate-400"/>
+              <div className={cx('absolute top-0.5 bottom-0.5 rounded', calc[i].P >= 0 ? 'bg-emerald-500 left-1/2' : 'bg-amber-500 right-1/2')} style={{ width:(50 * Math.abs(calc[i].P) / maxP) + '%' }}/>
+            </div>
+          </div>))}
+        <div className="grid grid-cols-[120px_1fr] text-[10px] text-slate-400"><span/><div className="flex justify-between"><span>◀ üretilen</span><span>harcanan ▶</span></div></div>
+      </div>
+      {!balanced && valid.length > 0 && <Callout kind="danger" className="mt-4" title="Güç dengesi tutmuyor — kontrol listesi">{r`(1) Her elemanda akımın **+ uçtan girip girmediğini** tekrar kontrol et. (2) Kaynakların hepsinin güç verdiğini varsayma. (3) Ortak dal akımlarını $(I_1 - I_2)$ olarak hesapladığından emin ol. (4) Fark tam olarak bir elemanın gücünün iki katıysa o elemanın işareti terstir.`}</Callout>}
+      {badR.some(Boolean) && <Callout kind="warn" className="mt-3">{r`Kırmızı satırdaki **direnç** negatif güç gösteriyor — direnç güç üretemez. Akım yönü veya gerilim polaritesi ters girilmiş.`}</Callout>}
+    </Card>
+  );
+}
+function OhmCalc(){
+  const [f, setF] = useState({ V:'12', I:'', R:'4k', P:'' });
+  const n = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() === '' ? NaN : numVal(v)]));
+  const known = ['V', 'I', 'R', 'P'].filter(k => isFinite(n[k]));
+  let out = null, how = '';
+  if (known.length >= 2) {
+    const [a, b] = known; const s = a + b; let { V, I, R, P } = n;
+    if (s === 'VI') { R = V / I; P = V * I; how = r`R = \frac{V}{I},\ P = VI`; }
+    else if (s === 'VR') { I = V / R; P = V * V / R; how = r`I = \frac{V}{R},\ P = \frac{V^2}{R}`; }
+    else if (s === 'VP') { I = P / V; R = V * V / P; how = r`I = \frac{P}{V},\ R = \frac{V^2}{P}`; }
+    else if (s === 'IR') { V = I * R; P = I * I * R; how = r`V = IR,\ P = I^2R`; }
+    else if (s === 'IP') { V = P / I; R = P / (I * I); how = r`V = \frac{P}{I},\ R = \frac{P}{I^2}`; }
+    else if (s === 'RP') { V = Math.sqrt(P * R); I = Math.sqrt(P / R); how = r`V = \sqrt{PR},\ I = \sqrt{P/R}`; }
+    out = { V, I, R, P };
+  }
+  const U = { V:'V', I:'A', R:'Ω', P:'W' };
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">Herhangi <b>iki</b> değeri gir (SI önekli olabilir: 4k, 2.5m, 470µ), diğer ikisi hesaplanır.</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {['V', 'I', 'R', 'P'].map(k => <Field key={k} label={`${k} (${U[k]})`}><input className={inputCls + ' font-mono'} value={f[k]} onChange={e => setF({ ...f, [k]:e.target.value })} placeholder="?"/></Field>)}
+      </div>
+      {known.length > 2 && <p className="text-xs text-amber-600">İkiden fazla değer girildi; ilk iki ({known.slice(0, 2).join(', ')}) kullanılıyor.</p>}
+      {out && <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{['V', 'I', 'R', 'P'].map(k => <div key={k} className={cx('rounded-xl p-3', known.slice(0, 2).includes(k) ? 'bg-slate-100 dark:bg-slate-800/60' : 'bg-sky-500/10 border border-sky-500/30')}><div className="text-xs text-slate-500">{k}</div><div className="font-bold tabular-nums">{formatSI(out[k], U[k])}</div></div>)}</div>}
+      {out && <Tex d m={how}/>}
+    </div>
+  );
+}
+function SPCalc(){
+  const [t, setT] = useState('4, 12, 6');
+  const R = t.split(/[;,\s]+/).filter(Boolean).map(numVal).filter(x => isFinite(x) && x > 0);
+  const Rs = R.reduce((a, b) => a + b, 0), Rp = R.length ? 1 / R.reduce((a, b) => a + 1 / b, 0) : NaN;
+  return (
+    <div className="space-y-3">
+      <Field label="Dirençler (Ω) — virgülle ayır" hint="ör. 4, 12, 6k, 470"><input className={inputCls + ' font-mono'} value={t} onChange={e => setT(e.target.value)}/></Field>
+      {R.length > 0 && <div className="grid sm:grid-cols-2 gap-3">
+        <div className="rounded-xl bg-sky-500/10 border border-sky-500/30 p-3"><div className="text-xs text-slate-500 mb-1">Seri</div><Tex m={r`R_{s} = ${R.map(x => fmt(x)).join(' + ')} = ${fmt(Rs, 6)}\ \Omega`}/></div>
+        <div className="rounded-xl bg-violet-500/10 border border-violet-500/30 p-3"><div className="text-xs text-slate-500 mb-1">Paralel</div><Tex m={r`R_{p} = \left(${R.map(x => r`\tfrac{1}{${fmt(x)}}`).join(' + ')}\right)^{-1} = ${fmt(Rp, 6)}\ \Omega`}/></div>
+      </div>}
+    </div>
+  );
+}
+function DivCalc(){
+  const [mode, setMode] = useState('v'); const [s, setS] = useState('12'); const [t, setT] = useState('2, 4, 6');
+  const S = numVal(s); const R = t.split(/[;,\s]+/).filter(Boolean).map(numVal).filter(x => isFinite(x) && x > 0);
+  const sumR = R.reduce((a, b) => a + b, 0), sumG = R.reduce((a, b) => a + 1 / b, 0);
+  return (
+    <div className="space-y-3">
+      <Seg small value={mode} onChange={setMode} options={[{ v:'v', l:'Gerilim bölücü (seri)' }, { v:'i', l:'Akım bölücü (paralel)' }]}/>
+      <div className="grid sm:grid-cols-[1fr_2fr] gap-3">
+        <Field label={mode === 'v' ? 'Kaynak gerilimi V (V)' : 'Toplam akım I (A)'}><input className={inputCls + ' font-mono'} value={s} onChange={e => setS(e.target.value)}/></Field>
+        <Field label="Dirençler (Ω)"><input className={inputCls + ' font-mono'} value={t} onChange={e => setT(e.target.value)}/></Field>
+      </div>
+      {R.length > 0 && isFinite(S) && <div className="space-y-1">
+        <Tex d m={mode === 'v' ? r`v_k = V\,\frac{R_k}{\sum R} \qquad (\textstyle\sum R = ${fmt(sumR)}\ \Omega)` : r`i_k = I\,\frac{1/R_k}{\sum 1/R} \qquad (\textstyle\sum G = ${fmt(sumG, 5)}\ \mathrm{S})`}/>
+        <div className="grid sm:grid-cols-3 gap-2">{R.map((x, i) => <div key={i} className="rounded-lg bg-slate-100 dark:bg-slate-800/60 px-3 py-2 text-sm"><Tex m={mode === 'v' ? r`v_{${i + 1}} = ${fmt(S)} \cdot \tfrac{${fmt(x)}}{${fmt(sumR)}} = ${fmt(S * x / sumR, 5)}\ \mathrm{V}` : r`i_{${i + 1}} = ${fmt(S)} \cdot \tfrac{1/${fmt(x)}}{${fmt(sumG, 4)}} = ${fmt(S / x / sumG, 5)}\ \mathrm{A}`}/></div>)}</div>
+      </div>}
+    </div>
+  );
+}
+function SolverCalc(){
+  const [t, setT] = useState(`Ç1: -10 + 2*I1 + 4*(I1 - I2) = 0\nÇ2: 4*(I2 - I1) + 6*I2 + 4 = 0`);
+  const [md, setMd] = useState('');
+  const go = () => {
+    try {
+      const an = analyzeEquations(t);
+      if (!an.eqs.length) { setMd('> ⚠️ Denklem bulunamadı. Her satıra bir denklem yaz: `3*V1 - V2 = 12`'); return; }
+      setMd(`## Kurulum\n${equationsMarkdown(an)}\n## Çözüm\n\n${solutionMarkdown(an)}${an.checks.length ? '## Sağlama\n\n' + an.checks.map(c => '- ' + c).join('\n') : ''}`);
+    } catch (e) { setMd('> ⚠️ Hata: ' + e.message); }
+  };
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">KCL/KVL denklemlerini satır satır yaz (bilinenleri <code className="ic">R1 = 4 Ω</code> veya <code className="ic">Vs = 12</code> şeklinde ekleyebilirsin). Doğrusal sistemler Gauss yok etme ile çözülür; EKOK adımları da gösterilir.</p>
+      <textarea className={inputCls + ' font-mono text-[13px]'} rows={5} value={t} onChange={e => setT(e.target.value)}/>
+      <button className={btnP} onClick={go}>🧮 Çöz</button>
+      {md && <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 anim-in"><Md src={md}/></div>}
+    </div>
+  );
+}
+function Module5(){
+  const [calc, setCalc] = useState('ohm');
+  return (
+    <div className="space-y-6 anim-in">
+      <SectionTitle icon="⚖️" title="Modül 5 · Tellegen Güç Sağlaması ve Hızlı Hesaplayıcı" sub="Pasif işaretleme kuralına göre güçleri anında hesapla, ΣP = 0 kontrolü yap."/>
+      <TellegenTable/>
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="font-bold text-lg">🧮 Hızlı Hesaplayıcı</h3>
+          <Pills value={calc} onChange={setCalc} items={[{ v:'ohm', l:'Ohm & Güç' }, { v:'sp', l:'Seri / Paralel' }, { v:'div', l:'Bölücüler' }, { v:'solve', l:'Denklem Sistemi' }]}/>
+        </div>
+        <div key={calc} className="anim-in">
+          {calc === 'ohm' && <OhmCalc/>}{calc === 'sp' && <SPCalc/>}{calc === 'div' && <DivCalc/>}{calc === 'solve' && <SolverCalc/>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* =====================================================================
+   10) UYGULAMA KABUĞU
+   ===================================================================== */
+const TABS = [
+  { id:'m1', no:1, t:'Konu Notları', icon:'📚' },
+  { id:'m2', no:2, t:'Analiz Yöntemleri', icon:'🧭' },
+  { id:'m3', no:3, t:'Yöntem Seçici', icon:'🌳' },
+  { id:'m4', no:4, t:'Not Tamamlayıcı', icon:'📝' },
+  { id:'m5', no:5, t:'Tellegen & Hesap', icon:'⚖️' },
+];
+class Boundary extends React.Component {
+  constructor(p){ super(p); this.state = { e:null }; }
+  static getDerivedStateFromError(e){ return { e }; }
+  componentDidUpdate(pp){ if (pp.k !== this.props.k && this.state.e) this.setState({ e:null }); }
+  render(){ return this.state.e ? <Card className="p-6"><div className="text-rose-500 font-bold">Bu modülde bir hata oluştu</div><pre className="text-xs mt-2 whitespace-pre-wrap">{String(this.state.e && this.state.e.message)}</pre></Card> : this.props.children; }
+}
+function App(){
+  const [tab, setTab] = useState(() => { const h = location.hash.slice(1); return TABS.some(t => t.id === h) ? h : 'm1'; });
+  const [method, setMethod] = useState('node');
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => { document.documentElement.classList.toggle('dark', dark); try { localStorage.setItem('da1_theme', dark ? 'dark' : 'light'); } catch (e) {} }, [dark]);
+  useEffect(() => { history.replaceState(null, '', '#' + tab); window.scrollTo({ top:0, behavior:'smooth' }); }, [tab]);
+  const goMethod = id => { setMethod(id); setTab('m2'); };
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/75 dark:bg-slate-950/75 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center gap-3 py-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-violet-600 grid place-items-center text-white text-xl shadow-lg shadow-sky-500/25">⚡</div>
+            <div className="min-w-0">
+              <h1 className="font-extrabold tracking-tight leading-tight truncate">Devre Analizi I <span className="text-sky-600 dark:text-sky-400">· Sınav Atölyesi</span></h1>
+              <p className="text-[11px] text-slate-500 truncate">Elektrik-Elektronik Mühendisliği · interaktif ders notu & çalışma aracı</p>
+            </div>
+            <button onClick={() => setDark(!dark)} className="ml-auto h-10 w-10 rounded-xl border border-slate-300 dark:border-slate-700 grid place-items-center hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Tema değiştir">{dark ? '☀️' : '🌙'}</button>
+          </div>
+          <nav className="flex gap-1 overflow-x-auto pb-2 -mx-1 px-1">
+            {TABS.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={cx('shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition',
+                  tab === t.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800')}>
+                <span className={cx('h-5 w-5 rounded-md grid place-items-center text-[10px] font-bold', tab === t.id ? 'bg-sky-500 text-white' : 'bg-slate-200 dark:bg-slate-800')}>{t.no}</span>
+                <span>{t.icon} {t.t}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+        <Boundary k={tab}>
+          {tab === 'm1' && <Module1/>}
+          {tab === 'm2' && <Module2 method={method} setMethod={setMethod}/>}
+          {tab === 'm3' && <Module3 goMethod={goMethod}/>}
+          {tab === 'm4' && <Module4/>}
+          {tab === 'm5' && <Module5/>}
+        </Boundary>
+      </main>
+      <footer className="border-t border-slate-200 dark:border-slate-800 py-5 text-center text-xs text-slate-500">
+        Devre Analizi I · Sınav Atölyesi — React · Tailwind CSS · KaTeX. Notlar ve kartlar yalnızca bu tarayıcıda saklanır. Başarılar! ⚡
+      </footer>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
